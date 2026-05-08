@@ -20,3 +20,4 @@ MymuduoProject/.vscode/
 *.log
 *.tmp
 *.bak
+.vscode/
