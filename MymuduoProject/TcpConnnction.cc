@@ -2,8 +2,10 @@
 #include"Channel.hpp"
 #include"Socket.hpp"
 #include "EventLoop.hpp"
-#include "log.hpp"
+#include"log.hpp"
 #include"TimeStamp.hpp"
+#include"BusinessThreadPool.hpp"
+#include"RedisClient.hpp"
 #include <asm-generic/socket.h>
 #include <cerrno>
 #include <cstring>
@@ -16,7 +18,8 @@
 TcpConnction::TcpConnction(int fd,EventLoop* loop,std::string name):
 loop_(loop)
 ,name_(name)
-,lasttime_(TimeStamp::now())
+,businessPool_(nullptr)
+,redisClient_(nullptr)
 ,connsock_(std::make_unique<Socket>(fd))
 ,connchannel_(std::make_unique<Channel>(loop,fd))
 ,state_(kConnecting)
@@ -39,9 +42,14 @@ int TcpConnction::fd()
 }
 void TcpConnction::conntEstablish()
 {
-	state_=kConnected;
+    state_=kConnected;
     connchannel_->tie(shared_from_this());
     connchannel_->SetEnableIn();
+    // 连接建立时写入 Redis ZSET，score=当前时间
+    if (redisClient_)
+    {
+        redisClient_->updateActiveTime(name_, TimeStamp::now());
+    }
     conntionCallback_(shared_from_this());
 }
 void TcpConnction::conntDestoy()
@@ -52,14 +60,36 @@ void TcpConnction::conntDestoy()
 void TcpConnction::handleRead(TimeStamp ti)
 {
 	int savedErrno=0;
-    updatelastnow();
     while(true)
     {
 		ssize_t n=inbuffer_.readFd(connsock_->fd(),&savedErrno);
     	if(n>0)
     	{
-            //messageCallback_回调函数一定要减去已经读取的数据
-			messageCallback_(shared_from_this(),&inbuffer_,ti);
+            // IO 线程已经把数据读完，拷贝出独立 Buffer 交给业务线程池处理，
+            // 避免业务逻辑阻塞 IO 线程，同时避免 inbuffer_ 被并发读写。
+            auto spBuf = std::make_shared<Buffer>();
+            spBuf->append(inbuffer_.peek(), inbuffer_.readableBytes());
+            inbuffer_.retrieveAll();
+
+            // 更新 Redis 中该连接的活跃时间
+            if (redisClient_)
+            {
+                redisClient_->updateActiveTime(name_, TimeStamp::now());
+            }
+
+            // 投递到业务线程池异步执行消息回调
+            if (businessPool_)
+            {
+                TcpConnctionptr self = shared_from_this();
+                businessPool_->enqueue([self, spBuf, ti]()
+                {
+                    self->messageCallback_(self, spBuf.get(), ti);
+                });
+            }
+            else
+            {
+                messageCallback_(shared_from_this(), spBuf.get(), ti);
+            }
     	}
     	else if(n==0)
     	{
@@ -89,7 +119,10 @@ void TcpConnction::send(const std::string& msg)
         }
         else//不是一个线程下给该loop线程任务队列
         {
-            loop_->queueInLoop(std::bind(&TcpConnction::sendloop,shared_from_this(),msg.c_str(),msg.size()));
+            // 注意：这里把 msg 拷贝成独立 string 捕获，避免悬垂指针
+            auto spMsg = std::make_shared<std::string>(msg);
+            loop_->queueInLoop(std::bind(&TcpConnction::sendloop,shared_from_this(),
+                                         spMsg->data(), spMsg->size()));
         }
     }
 }
@@ -156,10 +189,6 @@ void TcpConnction::handleWrite()
                 connchannel_->SetDesableOut();
                 break;
             }
-            // if(state_!=kConnected)
-            // {
-            //     shutdownInloop();
-            // }
         }
         else
         {
@@ -182,25 +211,15 @@ void TcpConnction::handleWrite()
         }
     }
 }
-// void TcpConnction::shutdown()
-// {
-// 	if(state_==kConnected)
-//     {
-//         state_=kDisConnecting;
-// 		loop_->runInLoop(std::bind(&TcpConnction::shutdownInloop,shared_from_this()));
-//     }
-// }
-// void TcpConnction::shutdownInloop()
-// {
-// 	state_=kDisconnected;
-//     connchannel_->remove();
-// 	conntionCallback_(shared_from_this());
-//     closeCallback_(shared_from_this());
-// }
 void TcpConnction::handleClose()
 {
     state_=kDisConnecting;
     connchannel_->Setnonable();
+    // 从 Redis ZSET 中移除该连接
+    if (redisClient_)
+    {
+        redisClient_->removeConn(name_);
+    }
     Logmanage(NORMOL,"conntion fd:%d,break",connsock_->fd());
     conntionCallback_(shared_from_this());
     closeCallback_(shared_from_this());

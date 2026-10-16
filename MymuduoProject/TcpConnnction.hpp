@@ -8,6 +8,9 @@
 class Channel;
 class Socket;
 class EventLoop;
+class BusinessThreadPool;
+class RedisClient;
+
 class TcpConnction:public std::enable_shared_from_this<TcpConnction>
 {
     enum State{kDisconnected,kConnecting,kConnected,kDisConnecting};
@@ -18,14 +21,10 @@ public:
     {
         return name_;
     }
-    void updatelastnow()
-    {
-        lasttime_=TimeStamp::now();
-    }
-    time_t gettimeout()
-    {
-        return lasttime_;
-    }
+    // 注入业务线程池和 Redis 客户端（由 TcpServer 统一设置）
+    void setBusinessPool(BusinessThreadPool* pool) { businessPool_ = pool; }
+    void setRedisClient(RedisClient* redis) { redisClient_ = redis; }
+
     void SetConntionCallback(ConntionCallback& cb)
     {
 		conntionCallback_=cb;
@@ -57,7 +56,8 @@ private:
     void handleErr();//给channel的异常回调函数
 	EventLoop* loop_;//自己所在那个loop线程中
     std::string name_;
-    time_t lasttime_;//最后接收消息时间戳
+    BusinessThreadPool* businessPool_;//业务线程池（TcpServer 注入）
+    RedisClient* redisClient_;//Redis 客户端（TcpServer 注入）
     std::unique_ptr<Socket> connsock_;//管理自己的fd性质
     std::unique_ptr<Channel> connchannel_;//该conntion对应的channel
     std::atomic_int state_;//自己的连接状态
