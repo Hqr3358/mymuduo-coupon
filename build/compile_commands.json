@@ -1,0 +1,92 @@
+[
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/Acceptor.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/Acceptor.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/Acceptor.cc",
+  "output": "CMakeFiles/mymuduo.dir/Acceptor.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/Buffer.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/Buffer.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/Buffer.cc",
+  "output": "CMakeFiles/mymuduo.dir/Buffer.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/BusinessThreadPool.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/BusinessThreadPool.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/BusinessThreadPool.cc",
+  "output": "CMakeFiles/mymuduo.dir/BusinessThreadPool.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/Channel.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/Channel.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/Channel.cc",
+  "output": "CMakeFiles/mymuduo.dir/Channel.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/CurrentThread.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/CurrentThread.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/CurrentThread.cc",
+  "output": "CMakeFiles/mymuduo.dir/CurrentThread.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/EventLoop.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/EventLoop.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/EventLoop.cc",
+  "output": "CMakeFiles/mymuduo.dir/EventLoop.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/EventLoopThread.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/EventLoopThread.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/EventLoopThread.cc",
+  "output": "CMakeFiles/mymuduo.dir/EventLoopThread.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/EventLoopThreadPool.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/EventLoopThreadPool.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/EventLoopThreadPool.cc",
+  "output": "CMakeFiles/mymuduo.dir/EventLoopThreadPool.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/Eventepoller.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/Eventepoller.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/Eventepoller.cc",
+  "output": "CMakeFiles/mymuduo.dir/Eventepoller.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/LoopThread.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/LoopThread.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/LoopThread.cc",
+  "output": "CMakeFiles/mymuduo.dir/LoopThread.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/RedisClient.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/RedisClient.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/RedisClient.cc",
+  "output": "CMakeFiles/mymuduo.dir/RedisClient.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/Socket.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/Socket.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/Socket.cc",
+  "output": "CMakeFiles/mymuduo.dir/Socket.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/TcpConnnction.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/TcpConnnction.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/TcpConnnction.cc",
+  "output": "CMakeFiles/mymuduo.dir/TcpConnnction.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/Tcpserver.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/Tcpserver.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/Tcpserver.cc",
+  "output": "CMakeFiles/mymuduo.dir/Tcpserver.cc.o"
+},
+{
+  "directory": "/home/qiu/github/Mymuduo/build",
+  "command": "/usr/bin/g++ -Dmymuduo_EXPORTS  -g -std=c++17 -fPIC -g -fPIC -o CMakeFiles/mymuduo.dir/poller.cc.o -c /home/qiu/github/Mymuduo/MymuduoProject/poller.cc",
+  "file": "/home/qiu/github/Mymuduo/MymuduoProject/poller.cc",
+  "output": "CMakeFiles/mymuduo.dir/poller.cc.o"
+}
+]

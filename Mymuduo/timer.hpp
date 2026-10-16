@@ -30,7 +30,7 @@ public:
 	}
 	void SettimeoutCallback(timeoutCallback&& cb)
 	{
-		timeoutCallback_=std::move(cb);
+		timeoutCallback_=std::move(cb); 
 	}
 	void updatetimeoutPolling(int timeout)
 	{
