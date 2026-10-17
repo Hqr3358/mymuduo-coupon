@@ -3,8 +3,8 @@
 #include <mutex>
 EventLoopThread::EventLoopThread(const ThreadInitCallback& cb):
 thread_(std::make_unique<Thread>(std::bind(&EventLoopThread::threadFunc,this)))
-,loop_(nullptr)
 ,exit_(false)
+,loop_(nullptr)
 ,callback_(cb){}
 EventLoopThread::~EventLoopThread()
 {

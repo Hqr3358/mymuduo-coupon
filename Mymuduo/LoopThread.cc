@@ -4,9 +4,9 @@
 #include<semaphore.h>
 Thread::Thread(Func fun):
 tid_(0)
-,thread_(nullptr)
 ,started_(false)
 ,joined_(false)
+,thread_(nullptr)
 ,func_(std::move(fun))
 {}
 Thread::~Thread()
