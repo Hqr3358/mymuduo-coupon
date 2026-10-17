@@ -1,0 +1,4 @@
+/home/user/Doubao/chats/1599234611714/mymuduo-coupon/Mymuduo_coupon/build2/CMakeFiles/couponserver.dir
+/home/user/Doubao/chats/1599234611714/mymuduo-coupon/Mymuduo_coupon/build2/CMakeFiles/couponclient.dir
+/home/user/Doubao/chats/1599234611714/mymuduo-coupon/Mymuduo_coupon/build2/CMakeFiles/edit_cache.dir
+/home/user/Doubao/chats/1599234611714/mymuduo-coupon/Mymuduo_coupon/build2/CMakeFiles/rebuild_cache.dir

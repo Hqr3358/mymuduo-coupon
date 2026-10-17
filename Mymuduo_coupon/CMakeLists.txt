@@ -8,7 +8,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -pthread")
 
 # ---- 自研 muduo 网络库（头文件目录 + 已编译的动态库）----
-set(MYMUDUO_DIR ${CMAKE_SOURCE_DIR}/../Mymuduo)
+# 网络库为独立仓库，默认位于本工程上一级目录 ../Mymuduo；
+# 若网络库在其他位置，编译时用 -DMYMUDUO_DIR=/path/to/Mymuduo 覆盖。
+if(NOT DEFINED MYMUDUO_DIR)
+    set(MYMUDUO_DIR ${CMAKE_SOURCE_DIR}/../Mymuduo)
+endif()
 include_directories(${MYMUDUO_DIR})
 link_directories(${MYMUDUO_DIR}/lib)
 

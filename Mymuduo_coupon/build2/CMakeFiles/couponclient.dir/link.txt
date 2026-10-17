@@ -1,0 +1,1 @@
+/usr/bin/g++  -g -Wall -Wextra -pthread CMakeFiles/couponclient.dir/client/client.cc.o -o couponclient   -L/home/user/Doubao/chats/1599234611714/Mymuduo/lib  -Wl,-rpath,/home/user/Doubao/chats/1599234611714/Mymuduo/lib 
