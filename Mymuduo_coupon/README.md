@@ -148,14 +148,14 @@ Mymuduo_coupon/
 sudo apt-get install -y mysql-server redis-server libhiredis-dev nlohmann-json3-dev libmysqlclient-dev
 
 # 1) 先编译自研库（Mymuduo 项目）
-cd ../Mymuduo/build && cmake .. && make -j4
+cd ../mymudo/build && cmake .. && make -j4
 
 # 2) 初始化数据库（建库 + 17 张表 + 账号 coupon/coupon123）
 mysql -uroot < sql/init.sql
 
 # 3) 编译并启动优惠券服务器（默认监听 9081）
 mkdir -p build && cd build && cmake .. && make -j4
-LD_LIBRARY_PATH=../Mymuduo/lib ./couponserver
+LD_LIBRARY_PATH=../mymudo/lib ./couponserver
 
 # 4) 压测/演示
 ./couponclient issue "秒杀券" 50              # 发券
