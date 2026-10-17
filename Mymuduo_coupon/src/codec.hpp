@@ -3,7 +3,6 @@
 #include <mutex>
 #include <string>
 
- */
 class Codec
 {
 public:
@@ -11,10 +10,8 @@ public:
 
     explicit Codec(MessageCallback cb);
 
-     */
     void feed(const char* data, size_t len);
 
-     */
     void reset();
 
 private:

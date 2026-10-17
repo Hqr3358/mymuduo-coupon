@@ -6,7 +6,6 @@
 #include <string>
 #include <vector>
 
- */
 class ResultSet
 {
 public:
@@ -113,10 +112,8 @@ private:
     int lastErrno_ = 0;
 };
 
- */
 static constexpr int kShardCount = 5;
 
- */
 inline std::string userCouponTable(int64_t userId)
 {
     return "user_coupon_" + std::to_string(static_cast<int>(userId % kShardCount));

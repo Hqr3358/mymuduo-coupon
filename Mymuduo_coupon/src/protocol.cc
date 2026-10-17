@@ -2,7 +2,6 @@
 #include <arpa/inet.h>
 #include <cstring>
 
- */
 void encodeFrame(std::string& out, const std::string& payload)
 {
     uint32_t len = htonl(static_cast<uint32_t>(payload.size()));
@@ -10,7 +9,6 @@ void encodeFrame(std::string& out, const std::string& payload)
     out.append(payload);
 }
 
- */
 bool decodeFrame(const std::string& in, size_t& offset, std::string* payload, bool* bad)
 {
     *bad = false;

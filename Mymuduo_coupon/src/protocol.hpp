@@ -2,7 +2,6 @@
 #include <cstdint>
 #include <string>
 
- */
 
 // 消息类型（客户端 -> 服务端请求）
 enum MsgId
@@ -33,8 +32,6 @@ enum ErrCode
 
 static constexpr uint32_t kMaxFrameSize = 1 << 20; // 单包最大 1MB
 
- */
 void encodeFrame(std::string& out, const std::string& payload);
 
- */
 bool decodeFrame(const std::string& in, size_t& offset, std::string* payload, bool* bad);

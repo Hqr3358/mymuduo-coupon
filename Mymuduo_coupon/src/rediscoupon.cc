@@ -26,7 +26,6 @@ const char* CouponRedis::kClaimLua =
 // thread_local：每个业务线程一条 Redis 连接
 static thread_local redisContext* t_ctx = nullptr;
 
- */
 bool CouponRedis::init(const std::string& host, int port)
 {
     host_ = host;
@@ -57,7 +56,6 @@ bool CouponRedis::init(const std::string& host, int port)
     return true;
 }
 
- */
 redisContext* CouponRedis::ctx()
 {
     if (t_ctx) return t_ctx;
@@ -76,7 +74,6 @@ redisContext* CouponRedis::ctx()
     return t_ctx;
 }
 
- */
 bool CouponRedis::loadScript(redisContext* c)
 {
     redisReply* r = (redisReply*)redisCommand(c, "SCRIPT LOAD %s", kClaimLua);
@@ -94,7 +91,6 @@ bool CouponRedis::loadScript(redisContext* c)
     return ok;
 }
 
- */
 int CouponRedis::claimTry(int64_t couponId, int64_t userId, long* remain)
 {
     redisContext* c = ctx();
@@ -148,7 +144,6 @@ int CouponRedis::claimTry(int64_t couponId, int64_t userId, long* remain)
     return ERR_NOT_EXIST;
 }
 
- */
 void CouponRedis::claimRollback(int64_t couponId, int64_t userId)
 {
     redisContext* c = ctx();
@@ -164,7 +159,6 @@ void CouponRedis::claimRollback(int64_t couponId, int64_t userId)
     if (r2) freeReplyObject(r2);
 }
 
- */
 void CouponRedis::claimRollbackStock(int64_t couponId)
 {
     // 优化：只回补库存，保留 claimed 集合（见头文件说明）
@@ -176,7 +170,6 @@ void CouponRedis::claimRollbackStock(int64_t couponId)
     if (r) freeReplyObject(r);
 }
 
- */
 bool CouponRedis::initStock(int64_t couponId, int total)
 {
     redisContext* c = ctx();
@@ -192,7 +185,6 @@ bool CouponRedis::initStock(int64_t couponId, int total)
     return true;
 }
 
- */
 long CouponRedis::getStock(int64_t couponId)
 {
     redisContext* c = ctx();
@@ -210,7 +202,6 @@ long CouponRedis::getStock(int64_t couponId)
     return v;
 }
 
- */
 bool CouponRedis::markUsed(const std::string& couponCode)
 {
     redisContext* c = ctx();
@@ -226,7 +217,6 @@ bool CouponRedis::markUsed(const std::string& couponCode)
     return false;
 }
 
- */
 bool CouponRedis::isUsed(const std::string& couponCode)
 {
     redisContext* c = ctx();
@@ -238,7 +228,6 @@ bool CouponRedis::isUsed(const std::string& couponCode)
     return used;
 }
 
- */
 void CouponRedis::clearCouponCache(int64_t couponId)
 {
     // 优化：删除券的库存/领取集合缓存（定时清理器下架过期券时调用）

@@ -11,7 +11,6 @@
 
 using json = nlohmann::json;
 
- */
 class CouponService
 {
 public:
@@ -35,17 +34,11 @@ private:
     CouponService();
 
     // ---- 业务处理（实现见 couponservice.cc，均有功能级 @brief 注释）----
-     */
     void onPing(const TcpConnctionptr& conn, const json& js);
-     */
     void onIssue(const TcpConnctionptr& conn, const json& js);
-     */
     void onClaim(const TcpConnctionptr& conn, const json& js);
-     */
     void onUse(const TcpConnctionptr& conn, const json& js);
-     */
     void onQueryMine(const TcpConnctionptr& conn, const json& js);
-     */
     void onQuery(const TcpConnctionptr& conn, const json& js);
 
     /**

@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <string>
 
- */
 class CouponRedis
 {
 public:
@@ -13,13 +12,10 @@ public:
     CouponRedis(const CouponRedis&) = delete;
     CouponRedis& operator=(const CouponRedis&) = delete;
 
-     */
     bool init(const std::string& host, int port);
 
-     */
     int claimTry(int64_t couponId, int64_t userId, long* remain);
 
-     */
     void claimRollback(int64_t couponId, int64_t userId);
 
     /**
@@ -30,10 +26,8 @@ public:
      */
     void claimRollbackStock(int64_t couponId);
 
-     */
     bool initStock(int64_t couponId, int total);
 
-     */
     long getStock(int64_t couponId);
 
     /**
@@ -43,7 +37,6 @@ public:
      *   幂等语义不变。
      */
     bool markUsed(const std::string& couponCode);
-     */
     bool isUsed(const std::string& couponCode);
 
     /**

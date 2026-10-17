@@ -2,13 +2,11 @@
 #include "protocol.hpp"
 #include <vector>
 
- */
 Codec::Codec(MessageCallback cb)
     : onMessage_(std::move(cb))
 {
 }
 
- */
 void Codec::feed(const char* data, size_t len)
 {
     // 1) 加锁累积数据并切包（只做内存操作，不调用用户回调）
@@ -49,7 +47,6 @@ void Codec::feed(const char* data, size_t len)
     }
 }
 
- */
 void Codec::reset()
 {
     std::lock_guard<std::mutex> lock(mtx_);

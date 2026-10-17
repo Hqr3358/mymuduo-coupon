@@ -4,11 +4,9 @@
 
 // ==================== ResultSet ====================
 
- */
 ResultSet::ResultSet() {}
 ResultSet::~ResultSet() {}
 
- */
 void ResultSet::fill(MYSQL_RES* res)
 {
     if (!res) return;
@@ -36,14 +34,12 @@ void ResultSet::fill(MYSQL_RES* res)
     mysql_free_result(res);
 }
 
- */
 std::string ResultSet::get(size_t row, size_t col) const
 {
     if (row >= data_.size() || col >= data_[row].size()) return {};
     return data_[row][col];
 }
 
- */
 std::string ResultSet::get(size_t row, const std::string& colName) const
 {
     if (row >= data_.size()) return {};
@@ -56,7 +52,6 @@ std::string ResultSet::get(size_t row, const std::string& colName) const
 
 // ==================== MysqlPool ====================
 
- */
 MysqlPool::MysqlPool(const std::string& host, int port,
                      const std::string& user, const std::string& passwd,
                      const std::string& db, int poolSize)
@@ -64,7 +59,6 @@ MysqlPool::MysqlPool(const std::string& host, int port,
 {
 }
 
- */
 MysqlPool::~MysqlPool()
 {
     for (MYSQL* c : idle_)
@@ -74,7 +68,6 @@ MysqlPool::~MysqlPool()
     idle_.clear();
 }
 
- */
 bool MysqlPool::init()
 {
     int ok = 0;
@@ -95,7 +88,6 @@ bool MysqlPool::init()
     return ok > 0;
 }
 
- */
 bool MysqlPool::ensureAlive(MYSQL*& conn)
 {
     if (!conn) return false;
@@ -115,7 +107,6 @@ bool MysqlPool::ensureAlive(MYSQL*& conn)
     return true;
 }
 
- */
 MYSQL* MysqlPool::doGet()
 {
     // 优化：空闲队列为空时条件变量有限等待（3s），期间归还的连接会唤醒
@@ -131,7 +122,6 @@ MYSQL* MysqlPool::doGet()
     return c;
 }
 
- */
 void MysqlPool::doPut(MYSQL* conn)
 {
     if (!conn) return;
@@ -142,7 +132,6 @@ void MysqlPool::doPut(MYSQL* conn)
 
 // ==================== MysqlConn（RAII）====================
 
- */
 MysqlConn::MysqlConn(MysqlPool* pool)
     : pool_(pool), conn_(pool ? pool->doGet() : nullptr)
 {
@@ -156,7 +145,6 @@ MysqlConn::~MysqlConn()
     }
 }
 
- */
 bool MysqlConn::execute(const std::string& sql, ResultSet* rs)
 {
     if (!conn_) return false;
@@ -182,7 +170,6 @@ bool MysqlConn::execute(const std::string& sql, ResultSet* rs)
     return true;
 }
 
- */
 bool MysqlConn::query(const std::string& sql, ResultSet* rs)
 {
     if (!conn_ || !rs) return false;

@@ -15,14 +15,12 @@ static constexpr int kMaxUseRetry = 3;
 
 // ==================== 单例 ====================
 
- */
 CouponService* CouponService::init()
 {
     static CouponService svc;
     return &svc;
 }
 
- */
 CouponService::CouponService()
     : mysql_("127.0.0.1", 3306, "coupon", "coupon123", "coupon_db", 8)
 {
@@ -53,7 +51,6 @@ CouponService::CouponService()
     }
 }
 
- */
 void CouponService::dispatch(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.is_object() || !js.contains("msgid") || !js["msgid"].is_number_integer())
@@ -74,13 +71,11 @@ void CouponService::dispatch(const TcpConnctionptr& conn, const json& js)
 
 // ==================== 业务处理 ====================
 
- */
 void CouponService::onPing(const TcpConnctionptr& conn, const json& /*js*/)
 {
     sendResp(conn, MSG_PING, ERR_OK, "pong", {{"pong", true}});
 }
 
- */
 void CouponService::onIssue(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.contains("title") || !js["title"].is_string() ||
@@ -120,7 +115,6 @@ void CouponService::onIssue(const TcpConnctionptr& conn, const json& js)
              {{"coupon_id", couponId}, {"total", total}});
 }
 
- */
 void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.contains("coupon_id") || !js.contains("user_id") ||
@@ -220,7 +214,6 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
               {"coupon_code", code}, {"remain", remain}, {"title", title}});
 }
 
- */
 void CouponService::onUse(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.contains("user_id") || !js.contains("coupon_code") ||
@@ -298,7 +291,6 @@ void CouponService::onUse(const TcpConnctionptr& conn, const json& js)
     sendResp(conn, MSG_USE, ERR_SYSTEM, "use conflict, retry later");
 }
 
- */
 void CouponService::onQueryMine(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.contains("user_id") || !js["user_id"].is_number_integer())
@@ -340,7 +332,6 @@ void CouponService::onQueryMine(const TcpConnctionptr& conn, const json& js)
     sendResp(conn, MSG_QUERY_MINE, ERR_OK, "ok", {{"count", list.size()}, {"coupons", list}});
 }
 
- */
 void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.contains("coupon_id") || !js["coupon_id"].is_number_integer())
@@ -380,7 +371,6 @@ void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
 
 // ==================== 工具 ====================
 
- */
 void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
                              const std::string& msg, const json& data)
 {
@@ -395,7 +385,6 @@ void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
     conn->send(out); // send 线程安全：跨线程时自动 queueInLoop 到 IO 线程
 }
 
- */
 std::string CouponService::genCode(int64_t couponId, int64_t userId)
 {
     static thread_local std::mt19937_64 rng(std::random_device{}());
@@ -406,7 +395,6 @@ std::string CouponService::genCode(int64_t couponId, int64_t userId)
     return buf;
 }
 
- */
 std::string CouponService::nowStr()
 {
     time_t t = time(nullptr);
@@ -417,7 +405,6 @@ std::string CouponService::nowStr()
     return buf;
 }
 
- */
 std::string CouponService::futureStr(int days)
 {
     time_t t = time(nullptr) + static_cast<time_t>(days) * 86400;
@@ -428,7 +415,6 @@ std::string CouponService::futureStr(int days)
     return buf;
 }
 
- */
 void CouponService::startCleaner()
 {
     // 优化：启动后台清理线程，每 kCleanIntervalSec 秒执行一轮 cleanExpired。
@@ -449,7 +435,6 @@ void CouponService::startCleaner()
                            });
 }
 
- */
 void CouponService::cleanExpired()
 {
     // 优化：单轮清理——过期券下架 + Redis 缓存清理 + 分表状态标记

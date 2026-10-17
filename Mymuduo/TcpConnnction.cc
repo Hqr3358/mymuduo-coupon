@@ -52,7 +52,6 @@ void TcpConnction::conntEstablish()
     }
     conntionCallback_(shared_from_this());
 }
-/** @brief 连接销毁：触发关闭回调并清理（弱引用防悬垂） */
 void TcpConnction::conntDestoy()
 {
     state_=kDisconnected;

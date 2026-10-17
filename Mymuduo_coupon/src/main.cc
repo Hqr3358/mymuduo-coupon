@@ -12,7 +12,6 @@ static void handleSignal(int sig)
     exit(0);
 }
 
- */
 int main(int argc, char** argv)
 {
     signal(SIGINT, handleSignal);

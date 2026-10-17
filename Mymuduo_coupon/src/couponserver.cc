@@ -3,7 +3,6 @@
 #include "TcpConnnction.hpp"
 #include "log.hpp"
 
- */
 CouponServer::CouponServer(EventLoop* loop, uint16_t port)
     : server_(loop, port), loop_(loop)
 {
@@ -12,19 +11,16 @@ CouponServer::CouponServer(EventLoop* loop, uint16_t port)
                                          std::placeholders::_2, std::placeholders::_3));
 }
 
- */
 void CouponServer::SetBusinessThreadNum(int n)
 {
     server_.SetBusinessThreadNum(n);
 }
 
- */
 void CouponServer::SetThreadnum(int n)
 {
     server_.SetThreadnum(n);
 }
 
- */
 void CouponServer::start()
 {
     CouponService* svc = CouponService::init();
@@ -39,7 +35,6 @@ void CouponServer::start()
     server_.start();
 }
 
- */
 void CouponServer::onConnection(const TcpConnctionptr& conn)
 {
     // 连接回调在 IO 线程执行（conntEstablish / handleClose）
@@ -75,7 +70,6 @@ void CouponServer::onConnection(const TcpConnctionptr& conn)
     }
 }
 
- */
 void CouponServer::onMessage(const TcpConnctionptr& conn, Buffer* buf, TimeStamp /*ts*/)
 {
     // 消息回调在业务线程池线程执行，buf 是本次 read 数据的独立拷贝
