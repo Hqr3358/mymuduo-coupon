@@ -1,8 +1,11 @@
-# 忽略项目内的编译产物和临时文件
-MymuduoProject/build/
-MymuduoProject/lib/
-MymuduoProject/.cache/
-MymuduoProject/.vscode/
+# 忽略编译产物与临时文件
+build/
+build2/
+lib/
+.cache/
+.vscode/
+.idea/
+.clangd/
 
 # 忽略编译生成的文件
 *.o
@@ -11,17 +14,13 @@ MymuduoProject/.vscode/
 *.out
 
 # 忽略 IDE 和系统生成的文件
-.idea/
 *.swp
 *~
 .DS_Store
 
-# 忽略日志和临时文件
+# 忽略日志、临时文件与沙箱挂载残留
 *.log
 *.tmp
 *.bak
-.vscode/
-Mymuduo/lib/
-Mymuduo/build/
 .fuse*
 *.fuse*
