@@ -1,7 +1,6 @@
 #pragma once
 #include "TcpConnnction.hpp"
 #include "mysqlpool.hpp"
-#include "protocol.hpp"
 #include "rediscoupon.hpp"
 #include <nlohmann/json.hpp>
 #include <atomic>

@@ -1,5 +1,6 @@
 #include "couponservice.hpp"
 #include "log.hpp"
+#include "protocol.hpp"
 
 #include <chrono>
 #include <cstdio>
