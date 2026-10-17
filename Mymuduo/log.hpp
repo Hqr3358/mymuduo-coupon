@@ -11,6 +11,7 @@ enum
     NORMOL,
     ERR
 };
+/** @brief 日志级别转字符串（DEBUG/NORMOL/ERR/FATAL） */
 inline std::string To_str(int level)
 {
     std::string str="";
@@ -33,6 +34,7 @@ inline std::string To_str(int level)
     }
     return str;
 }
+/** @brief 统一日志输出：带级别/时间/pid 前缀，FATAL 退出进程，ERR 走 stderr */
 inline void Logmanage(int level,std::string message, ...)
 {
     char logprefix[1024];

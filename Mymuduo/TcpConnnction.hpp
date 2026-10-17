@@ -11,11 +11,14 @@ class EventLoop;
 class BusinessThreadPool;
 class RedisClient;
 
+/** @brief TCP 连接：fd + Channel + 收发 Buffer，消息回调在业务线程池执行 */
 class TcpConnction:public std::enable_shared_from_this<TcpConnction>
 {
     enum State{kDisconnected,kConnecting,kConnected,kDisConnecting};
 public:
+/** @brief 构造连接：封装 fd + Channel，注册读事件回调 */
 	explicit TcpConnction(int fd,EventLoop* loop,std::string name);
+/** @brief 析构：移除 Channel 并关闭 fd */
     ~TcpConnction();
     std::string name()
     {
@@ -25,14 +28,17 @@ public:
     void setBusinessPool(BusinessThreadPool* pool) { businessPool_ = pool; }
     void setRedisClient(RedisClient* redis) { redisClient_ = redis; }
 
+/** @brief 设置连接建立回调（TcpServer 注入） */
     void SetConntionCallback(ConntionCallback& cb)
     {
 		conntionCallback_=cb;
     }
+/** @brief 设置关闭回调（TcpServer 注入） */
     void SetCloseCallback(CloseCallback&& cb)
     {
         closeCallback_=std::move(cb);
     }
+/** @brief 设置消息回调（业务处理入口，TcpServer 注入） */
     void SetMessageCallback(MessageCallback& cb)
     {
         messageCallback_=cb;
@@ -41,18 +47,30 @@ public:
     {
         return state_==kConnected;
     }
+/** @brief 返回连接 socket fd */
     int fd();
+/** @brief 返回连接所属事件循环 */
     EventLoop* getloop();
+/** @brief 连接建立：触发连接建立回调（上层可立即回包） */
     void conntEstablish();//连接建立
+/** @brief 连接销毁：触发关闭回调并清理（弱引用防悬垂） */
     void conntDestoy();//连接销毁
+/** @brief 发送数据（线程安全）：跨线程自动转 queueInLoop 到 IO 线程 */
 	void send(const std::string& msg);//给我要发送的数据接口
+/** @brief 主动关闭连接（业务侧调用） */
     void shutdown();//断开连接接口
 private:
+/** @brief IO 线程内发送：优先直写，写不完挂 write 事件 */
 	void sendloop(const char* data,int len);//在自己所在的loop线程中发送数据
+/** @brief IO 线程内断开：从连接表与 epoll 移除 */
     void shutdownInloop();//断开连接将自己从tcpserver中的vector中去掉,和从epoller中去掉
+/** @brief 可读事件处理：读入 Buffer，按读回调分发（业务消息入口） */
 	void handleRead(TimeStamp ti);//给channel的读回调函数
+/** @brief 可写事件处理：继续发送剩余缓冲数据 */
     void handleWrite();//给channel的写回调函数
+/** @brief 对端关闭处理：触发关闭回调并清理连接 */
     void handleClose();//给channel的断开回调函数
+/** @brief 异常处理：打印错误并走关闭流程 */
     void handleErr();//给channel的异常回调函数
 	EventLoop* loop_;//自己所在那个loop线程中
     std::string name_;
