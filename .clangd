@@ -1,0 +1,13 @@
+---
+# 优化：根级 clangd 配置——让 IDE 直接解析 Mymuduo/（自研网络库）与系统依赖头文件，
+# 解决"优惠券工程引用网络库头文件在编辑器中全红"的问题。
+# 路径均相对仓库根（Coder/VS Code 打开本仓库即为工作目录）。
+CompileFlags:
+  Add:
+    - "-IMymuduo"                      # 自研网络库头文件目录（TcpConnnction.hpp/Tcpserver.hpp/log.hpp...）
+    - "-I/usr/include/mysql"           # MySQL 客户端头文件
+    - "-I/usr/include/hiredis"         # hiredis 头文件
+    - "-I/usr/include/nlohmann"        # nlohmann-json 头文件
+    - "-std=c++17"
+    - "-Wall"
+    - "-pthread"
