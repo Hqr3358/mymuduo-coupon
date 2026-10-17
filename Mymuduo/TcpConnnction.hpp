@@ -45,7 +45,6 @@ public:
     int fd();
     EventLoop* getloop();
     void conntEstablish();//连接建立
-/** @brief 连接销毁：触发关闭回调并清理（弱引用防悬垂） */
     void conntDestoy();//连接销毁
 	void send(const std::string& msg);//给我要发送的数据接口
 private:

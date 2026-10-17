@@ -11,6 +11,7 @@
 
 using json = nlohmann::json;
 
+/** @brief 优惠券业务服务（单例 + msgid 注册表）：领券=Redis Lua 原子防超发+MySQL 唯一索引兜底；核销=版本号乐观锁幂等 */
 class CouponService
 {
 public:
@@ -24,10 +25,6 @@ public:
     bool ready() const { return ready_; }
     const std::string& error() const { return error_; }
 
-    /**
-     * @brief 优化：启动优惠券定时清理线程（后台线程，周期执行 cleanExpired）
-     *   服务 ready 后调用一次即可；线程随进程退出终止。
-     */
     void startCleaner();
 
 private:
@@ -41,12 +38,6 @@ private:
     void onQueryMine(const TcpConnctionptr& conn, const json& js);
     void onQuery(const TcpConnctionptr& conn, const json& js);
 
-    /**
-     * @brief 优化：单轮清理任务
-     *   1) 过期未下架券模板下架（coupon.status 1->0）；
-     *   2) 删除下架券的 Redis stock/claimed 缓存（防内存泄漏）；
-     *   3) 将下架券在各分表中"未核销"的用户券标记为已过期(status=2)。
-     */
     void cleanExpired();
 
     // ---- 工具 ----
@@ -65,6 +56,5 @@ private:
     // 优化：定时清理线程相关
     std::thread cleaner_;
     std::atomic<bool> cleanerRunning_{false};
-    /** 优化：清理周期（秒），每轮扫描一次过期券 */
     static constexpr int kCleanIntervalSec = 60;
 };

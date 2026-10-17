@@ -14,9 +14,6 @@ RedisClient::~RedisClient()
     disconnect();
 }
 
-/**
- * @brief 新增：连接 Redis，加锁（hiredis context 非线程安全）
- */
 bool RedisClient::connect(const std::string& host, int port)
 {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -30,9 +27,6 @@ bool RedisClient::connect(const std::string& host, int port)
     return true;
 }
 
-/**
- * @brief 新增：断开 Redis 连接，加锁
- */
 void RedisClient::disconnect()
 {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -43,9 +37,6 @@ void RedisClient::disconnect()
     }
 }
 
-/**
- * @brief 新增：更新连接活跃时间（ZADD），加锁
- */
 bool RedisClient::updateActiveTime(const std::string& connName, time_t now)
 {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -61,9 +52,6 @@ bool RedisClient::updateActiveTime(const std::string& connName, time_t now)
     return true;
 }
 
-/**
- * @brief 新增：取出超时未活跃连接列表（ZRANGEBYSCORE），加锁
- */
 bool RedisClient::getTimeoutConns(time_t now, time_t timeoutSec, std::vector<std::string>& out)
 {
     std::lock_guard<std::mutex> lock(mtx_);
@@ -90,9 +78,6 @@ bool RedisClient::getTimeoutConns(time_t now, time_t timeoutSec, std::vector<std
     return true;
 }
 
-/**
- * @brief 新增：连接断开时从 ZSET 移除（ZREM），加锁
- */
 bool RedisClient::removeConn(const std::string& connName)
 {
     std::lock_guard<std::mutex> lock(mtx_);

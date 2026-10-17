@@ -13,9 +13,6 @@ void Socket::Listen()
         Logmanage(FATAL,"listen fali");
     }
 }
-/**
- * @brief 新增：批量 accept，每个 fd 携带自己的 peer 地址
- */
 void Socket::Accept(std::vector<AcceptedConn>& conns)
 {
     sockaddr_in peer;
@@ -42,9 +39,6 @@ void Socket::Accept(std::vector<AcceptedConn>& conns)
         }
     }
 }
-/**
- * @brief 新增：绑定监听端口（原实现写死 8081，改为可配置端口）
- */
 void Socket::BindAddress(uint16_t port)
 {
     sockaddr_in localaddr;

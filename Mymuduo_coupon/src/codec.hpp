@@ -3,6 +3,7 @@
 #include <mutex>
 #include <string>
 
+/** @brief 连接级粘包解码器：4 字节长度头 + JSON 载荷，锁内切包后回调业务 */
 class Codec
 {
 public:

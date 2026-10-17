@@ -6,6 +6,7 @@
 #include <string>
 #include <unordered_map>
 
+/** @brief 优惠券服务器：封装 Mymuduo Tcpserver，连接/消息回调绑定到 CouponService */
 class CouponServer
 {
 public:

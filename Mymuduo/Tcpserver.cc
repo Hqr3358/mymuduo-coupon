@@ -19,9 +19,6 @@
 #include "RedisClient.hpp"
 #include "log.hpp"
 
-/**
- * @brief 新增：构造 TcpServer，端口透传给 Acceptor（监听端口可配置）
- */
 Tcpserver::Tcpserver(EventLoop* loop, uint16_t port):
 baseloop_(loop)
 ,acceptor_(std::make_unique<Acceptor>(baseloop_, port))
