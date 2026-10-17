@@ -28,7 +28,7 @@ CREATE TABLE coupon (
 
 -- 5 张分表：user_coupon_{0..4}
 -- 同一用户按 user_id % 5 路由到固定一张表：
---   * 写热点分散到 16 张表，缓解单表锁竞争与 IO 压力
+--   * 写热点分散到 5 张表，缓解单表锁竞争与 IO 压力
 --   * 同一用户的所有券在同一张表，查询"我的券"只查一张表
 --   * 唯一索引冲突局域化：冲突只发生在同表内部
 CREATE TABLE IF NOT EXISTS user_coupon_0 (

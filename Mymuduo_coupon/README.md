@@ -5,7 +5,7 @@
 
 - **Redis Lua 原子防超发**（DECR 库存 + SADD 去重一把锁）
 - **MySQL 唯一索引兜底**（防重复领取最终防线）
-- **user_coupon 分表**（按 user_id % 16 哈希路由）
+- **user_coupon 分表**（按 user_id % 5 哈希路由）
 - **核销幂等**（MySQL 原子 UPDATE 受影响行数判定）
 
 ## 架构总览
@@ -30,7 +30,7 @@
                               ┌──────▼─────┐   ┌────▼─────┐
                               │   MySQL    │   │  Redis   │
                               │ coupon_db  │   │ stock/   │
-                              │ 17 张表    │   │ claimed/ │
+                              │ 6 张表    │   │ claimed/ │
                               └────────────┘   │ used     │
                                                └──────────┘
 ```
@@ -98,18 +98,18 @@ Lua 预扣成功 → INSERT user_coupon 失败（唯一冲突/DB 错误）
 ### 4. 核销幂等：MySQL 原子 UPDATE
 
 ```sql
-UPDATE user_coupon_9 SET status=1, used_at=NOW(), order_id='...'
+UPDATE user_coupon_1 SET status=1, used_at=NOW(), order_id='...'
  WHERE coupon_code='C6-1001-xxx' AND user_id=1001 AND status=0
 ```
 - `affectedRows == 1`：核销成功，写 Redis `coupon:used:{code}` 快速缓存；
 - `affectedRows == 0`：查 status —— `1` 返回"已核销"（**幂等**），无记录返回"券无效"。
 并发重复核销由 InnoDB 行锁串行化，天然安全。
 
-### 5. 分表：user_coupon_{0..15}
+### 5. 分表：user_coupon_{0..4}
 
-- 路由：`table = "user_coupon_" + (userId % 16)`；
+- 路由：`table = "user_coupon_" + (userId % 5)`；
 - 同一用户所有券落在同一张表：查询"我的券"只查一张表、唯一索引冲突局域化；
-- 写热点分散到 16 张表，缓解单表锁竞争与 IO 压力；
+- 写热点分散到 5 张表，缓解单表锁竞争与 IO 压力；
 - 分表键 = 用户 ID（业务访问按用户维度），无跨表事务。
 
 ## 对自研库 Mymuduo 的修复（本次发现并修复）
@@ -127,7 +127,7 @@ UPDATE user_coupon_9 SET status=1, used_at=NOW(), order_id='...'
 Mymuduo_coupon/
 ├── CMakeLists.txt
 ├── README.md
-├── sql/init.sql           # 建库 + coupon 表 + 16 张分表 + 业务账号
+├── sql/init.sql           # 建库 + coupon 表 + 5 张分表 + 业务账号
 ├── redis/claim_coupon.lua # 防超发 Lua 脚本（与源码内嵌一致）
 ├── src/
 │   ├── protocol.{hpp,cc}      # 4字节长度头 + JSON 封包/解包
@@ -152,7 +152,7 @@ sudo apt-get install -y mysql-server redis-server libhiredis-dev nlohmann-json3-
 cd .. && mkdir -p build && cd build && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && make -j4
 #    产物：../Mymuduo/lib/libmymuduo.so、./Mymuduo_coupon/couponserver、couponclient
 
-# 2) 初始化数据库（建库 + 17 张表 + 账号 coupon/coupon123）
+# 2) 初始化数据库（建库 + 6 张表 + 账号 coupon/coupon123）
 mysql -uroot < ../Mymuduo_coupon/sql/init.sql
 
 # 3) 启动优惠券服务器（支持参数：./couponserver [port] [businessThreads]，默认 9081 / 8）
@@ -185,12 +185,12 @@ LD_LIBRARY_PATH=../Mymuduo/lib ../build/Mymuduo_coupon/couponserver 9081 8
 | 发券 total=50，300 用户×16 线程并发领 | **成功 50 / 库存不足 250 / 重复 0 / 异常 0**（零超发） |
 | 同用户并发领 100 次 | 成功 1 / 重复 99（去重生效） |
 | 50 用户领券 + 每人核销 2 次 | 领券 50 成功；首次核销全成功、二次核销全幂等返回"已核销" |
-| 数据一致性 | MySQL `user_coupon_{uid%16}` 记录与 Redis `stock/claimed` 实时一致 |
+| 数据一致性 | MySQL `user_coupon_{uid%5}` 记录与 Redis `stock/claimed` 实时一致 |
 
 ## 面试可讲点
 
 1. **为什么 Lua**：Redis 单线程执行脚本 = 原子性，避免 DECR 后回滚的非原子竞态；
 2. **双保险**：Redis 做热路径，MySQL 唯一索引做最终一致兜底，含失败补偿回滚；
-3. **分表**：哈希路由 + 查询亲和 + 冲突局域化，16 张表可平滑扩展；
+3. **分表**：哈希路由 + 查询亲和 + 冲突局域化，5 张表可平滑扩展；
 4. **线程模型**：IO 线程只做读写，业务线程池消化 DB/Redis 阻塞，`send` 跨线程安全；
 5. **过程中修的库 bug**（悬垂指针/accept peer/RedisClient 并发）本身就是"高并发下发现并修复网络库缺陷"的实战故事。
