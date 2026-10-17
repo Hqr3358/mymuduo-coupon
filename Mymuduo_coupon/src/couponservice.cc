@@ -457,10 +457,8 @@ std::string CouponService::nowStr()
     time_t t = time(nullptr);
     struct tm lt;
     localtime_r(&t, &lt);
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
-                  lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
-                  lt.tm_hour, lt.tm_min, lt.tm_sec);
+    char buf[64];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &lt);
     return buf;
 }
 
@@ -469,10 +467,8 @@ std::string CouponService::futureStr(int days)
     time_t t = time(nullptr) + static_cast<time_t>(days) * 86400;
     struct tm lt;
     localtime_r(&t, &lt);
-    char buf[32];
-    std::snprintf(buf, sizeof(buf), "%04d-%02d-%02d %02d:%02d:%02d",
-                  lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
-                  lt.tm_hour, lt.tm_min, lt.tm_sec);
+    char buf[64];
+    strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &lt);
     return buf;
 }
 
