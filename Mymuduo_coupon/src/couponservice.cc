@@ -8,6 +8,9 @@
 #include <random>
 #include <thread>
 
+// 核销版本号乐观锁：读 version → 条件 UPDATE → 冲突重试的最大次数
+static constexpr int kMaxUseRetry = 3;
+
 // ==================== 单例 ====================
 
 CouponService* CouponService::init()
@@ -213,7 +216,12 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
               {"coupon_code", code}, {"remain", remain}, {"title", title}});
 }
 
-// ---- 核销：MySQL 原子 UPDATE（幂等）+ Redis 快速缓存 ----
+// ---- 核销：版本号乐观锁（version 条件更新+冲突重试）+ Redis 已核销缓存 ----
+// 优化：引入版本号乐观锁，与 Redis 已核销缓存构成双保险：
+//   * 先 SELECT 读取当前 version（同时判断券码归属 / 核销状态）
+//   * UPDATE ... SET version = version + 1 ... WHERE ... AND status = 0 AND version = <读到的值>
+//   * 受影响行数 = 0 说明并发修改（版本冲突 / 已核销），重新读取 version 重试（限次）
+//   * 缓存（7 天 TTL）先挡快速幂等，DB 版本号兜底并发冲突
 void CouponService::onUse(const TcpConnctionptr& conn, const json& js)
 {
     if (!js.contains("user_id") || !js.contains("coupon_code") ||
@@ -233,50 +241,61 @@ void CouponService::onUse(const TcpConnctionptr& conn, const json& js)
         return;
     }
 
-    std::string orderId = "USE" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
-
     std::string shard = userCouponTable(userId);
-    std::string updateSql = "UPDATE " + shard +
-                            " SET status = 1, used_at = '" + nowStr() +
-                            "', order_id = '" + orderId +
-                            "' WHERE coupon_code = '" + code +
-                            "' AND user_id = " + std::to_string(userId) + " AND status = 0";
 
-    MysqlConn mc(&mysql_);
-    ResultSet rs;
-    if (!mc.execute(updateSql, &rs))
+    // 版本号乐观锁：读 version → 条件 UPDATE（version 匹配才更新）→ 冲突重试
+    for (int retry = 0; retry < kMaxUseRetry; ++retry)
     {
-        sendResp(conn, MSG_USE, ERR_DB, "use coupon failed");
-        return;
+        std::string querySql = "SELECT status, version FROM " + shard +
+                               " WHERE coupon_code = '" + code +
+                               "' AND user_id = " + std::to_string(userId);
+        ResultSet qr;
+        {
+            MysqlConn mc(&mysql_);
+            if (!mc.query(querySql, &qr))
+            {
+                sendResp(conn, MSG_USE, ERR_DB, "query coupon status failed");
+                return;
+            }
+        }
+        if (qr.empty())
+        {
+            sendResp(conn, MSG_USE, ERR_INVALID, "invalid coupon code");
+            return;
+        }
+        if (qr.get(0, "status") == "1")
+        {
+            redis_.markUsed(code); // 已核销：回填缓存加速后续幂等判定
+            sendResp(conn, MSG_USE, ERR_ALREADY_USED, "already used");
+            return;
+        }
+
+        std::string orderId = "USE" + std::to_string(std::chrono::steady_clock::now().time_since_epoch().count());
+        int64_t ver = std::atoll(qr.get(0, "version").c_str());
+
+        std::string updateSql = "UPDATE " + shard +
+                                " SET status = 1, version = version + 1, used_at = '" + nowStr() +
+                                "', order_id = '" + orderId +
+                                "' WHERE coupon_code = '" + code +
+                                "' AND user_id = " + std::to_string(userId) +
+                                " AND status = 0 AND version = " + std::to_string(ver);
+
+        MysqlConn mc(&mysql_);
+        ResultSet rs;
+        if (!mc.execute(updateSql, &rs))
+        {
+            sendResp(conn, MSG_USE, ERR_DB, "use coupon failed");
+            return;
+        }
+        if (rs.affectedRows() == 1)
+        {
+            redis_.markUsed(code); // 核销成功，写缓存加速后续幂等判定
+            sendResp(conn, MSG_USE, ERR_OK, "use ok", {{"order_id", orderId}});
+            return;
+        }
+        // 受影响 0 行：版本号或状态被并发修改，重试重新读取
     }
 
-    if (rs.affectedRows() == 1)
-    {
-        redis_.markUsed(code); // 核销成功，写缓存加速后续幂等判定
-        sendResp(conn, MSG_USE, ERR_OK, "use ok", {{"order_id", orderId}});
-        return;
-    }
-
-    // 未更新到行：要么已核销（幂等），要么券码不属于该用户
-    std::string querySql = "SELECT status FROM " + shard +
-                           " WHERE coupon_code = '" + code +
-                           "' AND user_id = " + std::to_string(userId);
-    ResultSet qr;
-    if (!mc.query(querySql, &qr))
-    {
-        sendResp(conn, MSG_USE, ERR_DB, "query coupon status failed");
-        return;
-    }
-    if (qr.empty())
-    {
-        sendResp(conn, MSG_USE, ERR_INVALID, "invalid coupon code");
-        return;
-    }
-    if (qr.get(0, "status") == "1")
-    {
-        sendResp(conn, MSG_USE, ERR_ALREADY_USED, "already used");
-        return;
-    }
     sendResp(conn, MSG_USE, ERR_SYSTEM, "use conflict, retry later");
 }
 

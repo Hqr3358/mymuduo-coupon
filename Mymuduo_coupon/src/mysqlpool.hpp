@@ -122,7 +122,7 @@ private:
  * @brief 分表路由：user_coupon_{0..kShardCount-1}，按 user_id 取模
  *   同一用户的所有券落在同一张表：查询亲和、唯一索引冲突局域化
  */
-static constexpr int kShardCount = 16;
+static constexpr int kShardCount = 5;
 
 inline std::string userCouponTable(int64_t userId)
 {

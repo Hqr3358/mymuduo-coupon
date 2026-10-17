@@ -1,6 +1,6 @@
 # mymuduo-coupon
 
-基于**自研 Mymuduo 网络库**（仿 muduo）的完整优惠券业务系统：**发券 / 领券 / 核销**，Redis 防超发 + MySQL 唯一索引/16 分表。
+基于**自研 Mymuduo 网络库**（仿 muduo）的完整优惠券业务系统：**发券 / 领券 / 核销**，Redis 防超发 + MySQL 唯一索引/5 分表。
 
 ## 目录结构（单仓库自包含）
 
@@ -12,7 +12,7 @@ mymuduo-coupon/
 └── Mymuduo_coupon/         # 优惠券系统
     ├── src/                # 协议、解码器、MySQL 连接池、Redis 客户端、业务服务
     ├── client/             # 压测/演示客户端（纯 POSIX socket）
-    ├── sql/                # 建表 + 16 分表 DDL
+    ├── sql/                # 建表 + 5 分表 DDL
     ├── redis/              # 防超发 Lua 脚本
     └── CMakeLists.txt
 ```
