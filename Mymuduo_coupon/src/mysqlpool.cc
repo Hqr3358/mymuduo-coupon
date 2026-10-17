@@ -109,7 +109,7 @@ bool MysqlPool::ensureAlive(MYSQL*& conn)
 
 MYSQL* MysqlPool::doGet()
 {
-    // 新增：空闲队列为空时条件变量有限等待（3s），期间归还的连接会唤醒
+    // 优化：空闲队列为空时条件变量有限等待（3s），期间归还的连接会唤醒
     // 本线程；超时仍无连接才返回 nullptr，避免高并发下瞬时失败。
     std::unique_lock<std::mutex> lock(mtx_);
     if (!cv_.wait_for(lock, std::chrono::milliseconds(kGetTimeoutMs),
@@ -127,7 +127,7 @@ void MysqlPool::doPut(MYSQL* conn)
     if (!conn) return;
     std::lock_guard<std::mutex> lock(mtx_);
     idle_.push_back(conn);
-    cv_.notify_one(); // 新增：唤醒一个正在等待连接的线程
+    cv_.notify_one(); // 优化：唤醒一个正在等待连接的线程
 }
 
 // ==================== MysqlConn（RAII）====================
@@ -152,10 +152,10 @@ bool MysqlConn::execute(const std::string& sql, ResultSet* rs)
 
     if (mysql_real_query(conn_, sql.data(), sql.size()) != 0)
     {
-        lastErrno_ = mysql_errno(conn_); // 新增：记录错误号（如 1062 唯一索引冲突）
+        lastErrno_ = mysql_errno(conn_); // 优化：记录错误号（如 1062 唯一索引冲突）
         return false;
     }
-    lastErrno_ = 0; // 新增：执行成功清空错误号
+    lastErrno_ = 0; // 优化：执行成功清空错误号
     if (rs)
     {
         rs->setAffectedRows(mysql_affected_rows(conn_));
@@ -177,10 +177,10 @@ bool MysqlConn::query(const std::string& sql, ResultSet* rs)
 
     if (mysql_real_query(conn_, sql.data(), sql.size()) != 0)
     {
-        lastErrno_ = mysql_errno(conn_); // 新增：记录错误号
+        lastErrno_ = mysql_errno(conn_); // 优化：记录错误号
         return false;
     }
-    lastErrno_ = 0; // 新增：执行成功清空错误号
+    lastErrno_ = 0; // 优化：执行成功清空错误号
     MYSQL_RES* res = mysql_store_result(conn_);
     if (!res)
     {

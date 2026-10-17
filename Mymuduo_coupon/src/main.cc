@@ -18,7 +18,7 @@ int main(int argc, char** argv)
     signal(SIGTERM, handleSignal);
     signal(SIGPIPE, SIG_IGN); // send 已用 MSG_NOSIGNAL，此处双保险
 
-    // 新增：监听端口与业务线程数支持命令行参数，便于不同环境部署：
+    // 优化：监听端口与业务线程数支持命令行参数，便于不同环境部署：
     //   ./couponserver [port] [businessThreads]，默认 9081 / 8
     uint16_t port = 9081;
     int bizThreads = 8;

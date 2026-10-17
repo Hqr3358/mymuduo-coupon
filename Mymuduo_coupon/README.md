@@ -164,7 +164,7 @@ LD_LIBRARY_PATH=../mymudo/lib ./couponserver 9081 8
 ./couponclient stress-mix <coupon_id> 50 8   # 领券+双核销 → 核销幂等
 ```
 
-## 优惠券工程优化记录（新增）
+## 优惠券工程优化记录
 
 | 优化点 | 背景问题 | 做法 | 验证 |
 |---|---|---|---|

@@ -47,7 +47,7 @@ private:
  *   故预创建 poolSize 个连接，get/release 用互斥锁保护空闲队列。
  *   MysqlConn 是 RAII 守卫：构造取连接，析构归还。
  *
- * 新增：取连接支持有限等待（doGet 在空闲队列为空时用条件变量等待
+ * 优化：取连接支持有限等待（doGet 在空闲队列为空时用条件变量等待
  * kGetTimeoutMs，超时仍无连接才返回 nullptr），避免高并发瞬时耗尽
  * 连接池时业务请求直接失败。
  */
@@ -73,7 +73,7 @@ private:
     MYSQL* doGet();
     void doPut(MYSQL* conn);
 
-    /** 新增：取连接最长等待时间（毫秒），超时返回 nullptr */
+    /** 优化：取连接最长等待时间（毫秒），超时返回 nullptr */
     static constexpr int kGetTimeoutMs = 3000;
 
     std::string host_;
@@ -83,7 +83,7 @@ private:
     std::string db_;
     int poolSize_;
     std::mutex mtx_;
-    /** 新增：空闲连接就绪条件变量（doPut 归还时唤醒等待者） */
+    /** 优化：空闲连接就绪条件变量（doPut 归还时唤醒等待者） */
     std::condition_variable cv_;
     std::vector<MYSQL*> idle_;
 };
@@ -106,7 +106,7 @@ public:
     MYSQL* raw() { return conn_; }
 
     /**
-     * @brief 新增：最近一次 execute/query 失败时 MySQL 的错误号
+     * @brief 优化：最近一次 execute/query 失败时 MySQL 的错误号
      *   （如 ER_DUP_ENTRY=1062 唯一索引冲突），供业务区分失败原因
      */
     int lastErrno() const { return lastErrno_; }
@@ -114,7 +114,7 @@ public:
 private:
     MysqlPool* pool_;
     MYSQL* conn_;
-    /** 新增：最近一次执行失败的错误号（无失败时为 0） */
+    /** 优化：最近一次执行失败的错误号（无失败时为 0） */
     int lastErrno_ = 0;
 };
 

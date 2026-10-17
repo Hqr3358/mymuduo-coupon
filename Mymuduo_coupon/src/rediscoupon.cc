@@ -157,7 +157,7 @@ void CouponRedis::claimRollback(int64_t couponId, int64_t userId)
 
 void CouponRedis::claimRollbackStock(int64_t couponId)
 {
-    // 新增：只回补库存，保留 claimed 集合（见头文件说明）
+    // 优化：只回补库存，保留 claimed 集合（见头文件说明）
     redisContext* c = ctx();
     if (!c) return;
 
