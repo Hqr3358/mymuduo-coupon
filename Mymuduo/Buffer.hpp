@@ -9,7 +9,9 @@ class Buffer
     static const size_t kCheapPrePend=8;
     static const size_t kInitialSize=1024;
 public:
-	Buffer(size_t InitialSize=kInitialSize);
+	// 构造缓冲：预留前部空间
+// 构造缓冲：预留前部空间
+Buffer(size_t InitialSize=kInitialSize);
     ~Buffer(){}
     size_t writeableBytes() const//可写入区域长度
     {
@@ -34,7 +36,9 @@ public:
     void enSurewriteableBytes(size_t len);//判断可写入长度或者前移后是否够len长，不够就扩容
     void append(const char* data,size_t len);//将data，data＋len区域拷贝到写入区域，不够就扩容
     ssize_t readFd(int fd,int* saveErrno);//提取fd获得的数据
-    ssize_t writeFd(int fd,int* saveErrno);
+    // 写出缓冲内容到 fd
+// 把缓冲数据写到 fd
+ssize_t writeFd(int fd,int* saveErrno);
 private:
 	char* begin()
     {

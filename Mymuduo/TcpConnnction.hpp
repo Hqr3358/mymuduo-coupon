@@ -16,7 +16,9 @@ class TcpConnction:public std::enable_shared_from_this<TcpConnction>
 {
     enum State{kDisconnected,kConnecting,kConnected,kDisConnecting};
 public:
+	// 构造连接：封装 fd + Channel
 	explicit TcpConnction(int fd,EventLoop* loop,std::string name);
+    // 析构：关闭 fd
     ~TcpConnction();
     std::string name()
     {
@@ -42,7 +44,9 @@ public:
     {
         return state_==kConnected;
     }
+    // 返回连接 fd
     int fd();
+    // 返回所属事件循环
     EventLoop* getloop();
     void conntEstablish();//连接建立
     void conntDestoy();//连接销毁

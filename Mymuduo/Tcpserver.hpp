@@ -21,19 +21,26 @@ class Tcpserver
 {
     using ThreadInitCallback=std::function<void(EventLoop*)>;
 public:
+	// 构造服务器：创建 Acceptor + 线程池
 	explicit Tcpserver(EventLoop* loop, uint16_t port = 8081);
+    // 析构
     ~Tcpserver();
     void SetConntionCallback(ConntionCallback&& cb){conntionCallback_=std::move(cb);}
     void SetMessageCallback( MessageCallback&& cb){messageCallback_=std::move(cb);}
     void SetThreadInitCallback(ThreadInitCallback&& cb){threadInitCallback_=std::move(cb);}
+	// 设置 IO 线程数
 	void SetThreadnum(int threadnum);
     void SetBusinessThreadNum(int num);//设置业务线程池线程数
+    // 移除连接（线程安全封装）
     void removeConnction(const TcpConnctionptr& conn);
+    // 设置超时轮询周期
     void updatetimeoutPolling(int timeout);
+    // 启动服务：监听 + 线程池 + 超时定时器
     void start();
 private:
 	void NewConnction(int connfd,const sockaddr_in& peer);//来连接accept之后对connfd封装和new tcpconntion初始化
 	void handleTimeout();//从 Redis ZSET 中扫描超时连接并断开
+    // IO 线程内移除连接
     void removeInloopConnction(const TcpConnctionptr& conn);
     EventLoop* baseloop_;
 	std::unique_ptr<Acceptor> acceptor_;

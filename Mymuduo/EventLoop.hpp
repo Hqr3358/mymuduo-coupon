@@ -14,9 +14,12 @@ class EventLoop
 {
 	using Functor=std::function<void()>;
 public:
+	// 构造：创建 epoll + eventfd 唤醒通道
 	EventLoop();
+	// 析构
 	~EventLoop();
 	void loop();//开启循环事件
+	// 退出事件循环
 	void quit();
 	void runInLoop(Functor cb);//在本身loop中直接执行，不在就queueInLoop
 	void queueInLoop(Functor cb);//放入回调队列中并唤醒对应的loop执行回调

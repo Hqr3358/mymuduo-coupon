@@ -10,13 +10,19 @@ class Acceptor
 {
     using NewConnctionCallback=std::function<void(int,const sockaddr_in&)>;
 public:
-	Acceptor(EventLoop*loop, uint16_t port = 8081);
-    ~Acceptor();
+	// 构造监听器：绑定端口、注册可读事件
+// 构造监听器：绑定端口、注册可读事件回调
+Acceptor(EventLoop*loop, uint16_t port = 8081);
+    // 析构：移除监听 Channel
+// 析构
+~Acceptor();
     void SetNewConnctionCallback(NewConnctionCallback&& cb)
     {
         newConnctionCallback_=std::move(cb);
     }
-    void listen();
+    // 开始监听
+// 开始监听
+void listen();
 private:
 	void handleRecv(TimeStamp& ti);//注册在loop中的读回调进行accept获取fd和执行newConnctionCallback_
 	EventLoop* baseloop_;

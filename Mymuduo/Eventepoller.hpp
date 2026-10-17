@@ -23,6 +23,7 @@ public:
     void updateChannel(Channel* channel) override;//在epoll中增加或更新channel
     void fillActiveChannels(int numevents,ChannelList* activechannels);//填充loop的channel就绪事件队列
     private:
+	// epoll_ctl 封装
 	void update(uint32_t option,Channel* channel);
     int efd_;
     EventList events_;

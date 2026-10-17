@@ -9,10 +9,13 @@ class Codec
 public:
     using MessageCallback = std::function<void(const std::string& payload)>;
 
+    // 构造解码器：绑定完整包回调
     explicit Codec(MessageCallback cb);
 
+    // 喂入数据：锁内切包，完整包回调业务
     void feed(const char* data, size_t len);
 
+    // 重置解码器：清空缓冲
     void reset();
 
 private:

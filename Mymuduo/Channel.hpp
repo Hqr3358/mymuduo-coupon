@@ -89,7 +89,9 @@ public:
 	int fd(){return fd_;}
     uint32_t events(){return events_;}
 	int index(){return index_;}
-    void tie(const std::shared_ptr<void>& cb);
+    // 绑定对象弱引用（回调时防悬垂）
+    // 绑定弱引用（回调时防对象已析构）
+void tie(const std::shared_ptr<void>& cb);
 private:
 	void HandleEvent(int fd);//调用对应回调函数
 	std::weak_ptr<void> tie_;

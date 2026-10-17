@@ -32,6 +32,9 @@ enum ErrCode
 
 static constexpr uint32_t kMaxFrameSize = 1 << 20; // 单包最大 1MB
 
+// 封包：4 字节长度头 + JSON
+// 封包：长度头 + JSON
 void encodeFrame(std::string& out, const std::string& payload);
 
+// 解包：按长度头切完整帧
 bool decodeFrame(const std::string& in, size_t& offset, std::string* payload, bool* bad);

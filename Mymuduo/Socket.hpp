@@ -17,8 +17,11 @@ public:
 	Socket(int sockfd):sockfd_(sockfd){}
 	~Socket(){close(sockfd_);}
 	
+	// 监听 socket
 	void Listen();
+	// 批量 accept 新连接
 	void Accept(std::vector<AcceptedConn>& conns);
+	// 绑定监听端口
 	void BindAddress(uint16_t port = 8081);
 	int fd(){return sockfd_;}
 	void SetTcpNoDelay(bool on);//取消tcp延迟发送

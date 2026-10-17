@@ -17,7 +17,9 @@ public:
 
     // maxQueueSize：任务队列最大长度，超过就拒绝新任务，防止内存OOM
     explicit BusinessThreadPool(int numThreads = 4, size_t maxQueueSize = 2000);
-    ~BusinessThreadPool();
+    // 析构：停止线程池
+    // 析构：停止线程池
+~BusinessThreadPool();
 
     BusinessThreadPool(const BusinessThreadPool&) = delete;
     BusinessThreadPool& operator=(const BusinessThreadPool&) = delete;
@@ -33,7 +35,9 @@ public:
     size_t getQueueSize();
 
 private:
-    void workerLoop();
+    // 工作线程循环：取任务执行
+    // 工作线程循环：取任务执行
+void workerLoop();
 
     int numThreads_;
     // 任务队列最大容量，超过就拒绝

@@ -7,8 +7,11 @@ class Thread
 {
     using Func=std::function<void()>;
 public:
+	// 构造：保存线程入口函数
 	explicit Thread(Func fun);
+    // 析构
     ~Thread();
+    // 启动线程
     void start();
     void join()
     {

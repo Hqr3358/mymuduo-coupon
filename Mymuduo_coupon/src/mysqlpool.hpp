@@ -10,7 +10,9 @@
 class ResultSet
 {
 public:
+    // 构造空结果集
     ResultSet();
+    // 析构
     ~ResultSet();
 
     size_t rows() const { return data_.size(); }
@@ -19,6 +21,7 @@ public:
 
     // 行内取值
     std::string get(size_t row, size_t col) const;
+    // 按行+列名取值
     std::string get(size_t row, const std::string& colName) const;
 
     uint64_t affectedRows() const { return affectedRows_; }
@@ -33,6 +36,7 @@ private:
     uint64_t affectedRows_ = 0;
     uint64_t lastInsertId_ = 0;
 
+    // 填充结果集
     void fill(MYSQL_RES* res);
 };
 
@@ -43,6 +47,7 @@ public:
     MysqlPool(const std::string& host, int port,
               const std::string& user, const std::string& passwd,
               const std::string& db, int poolSize = 8);
+    // 析构：关闭全部连接
     ~MysqlPool();
 
     MysqlPool(const MysqlPool&) = delete;
@@ -56,7 +61,9 @@ public:
 
 private:
     friend class MysqlConn;
+    // 功能：取连接（空闲队列阻塞等待）
     MYSQL* doGet();
+    // 功能：归还连接入队
     void doPut(MYSQL* conn);
 
     static constexpr int kGetTimeoutMs = 3000;
@@ -76,7 +83,9 @@ private:
 class MysqlConn
 {
 public:
+    // RAII 构造：借出连接
     explicit MysqlConn(MysqlPool* pool);
+    // RAII 析构：归还连接
     ~MysqlConn();
 
     MysqlConn(const MysqlConn&) = delete;

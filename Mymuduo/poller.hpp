@@ -11,10 +11,12 @@ class Poller
 public:
 	using ChannelList=std::vector<Channel*>;
 	explicit Poller(EventLoop *loop):loop_(loop){}
+    // 虚析构
     virtual ~Poller();
     virtual void updateChannel(Channel* channel)=0;
     virtual void removeChannel(Channel* channel)=0;
     virtual TimeStamp poll(int timeout,ChannelList* activechannels)=0;
+    // 工厂：创建 epoll 版 Poller
     static  Poller* Newepoller(EventLoop *loop);
 protected:
 	Channelmap channelmap_;//epoll里监听的channel

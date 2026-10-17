@@ -13,21 +13,30 @@ public:
     CouponRedis(const CouponRedis&) = delete;
     CouponRedis& operator=(const CouponRedis&) = delete;
 
+    // 初始化 Redis 连接 + 加载 Lua 脚本
     bool init(const std::string& host, int port);
 
+    // 功能：领券原子操作（Lua 防超发+去重）
     int claimTry(int64_t couponId, int64_t userId, long* remain);
 
+    // 功能：领券失败回滚（回补库存+SREM）
     void claimRollback(int64_t couponId, int64_t userId);
 
+    // 功能：1062 冲突时仅回补库存
     void claimRollbackStock(int64_t couponId);
 
+    // 功能：发券初始化 Redis 库存
     bool initStock(int64_t couponId, int total);
 
+    // 功能：查询实时库存
     long getStock(int64_t couponId);
 
+    // 功能：核销成功写已核销缓存（7天TTL）
     bool markUsed(const std::string& couponCode);
+    // 功能：核销幂等前置检查
     bool isUsed(const std::string& couponCode);
 
+    // 功能：定时清理券缓存
     void clearCouponCache(int64_t couponId);
 
     // 供文档/展示的 Lua 脚本（与 rediscoupon.cc 内嵌一致）
@@ -40,6 +49,7 @@ private:
     int port_ = 6379;
     std::string sha_;            // SCRIPT LOAD 缓存的结果
 
+    // 加载 Lua 脚本（SCRIPT LOAD）
     bool loadScript(redisContext* c);
 
     static constexpr int kUsedCacheTtlSec = 7 * 86400;
