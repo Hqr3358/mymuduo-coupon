@@ -4,6 +4,7 @@
 #include <vector>
 #include <unistd.h>
 
+/** @brief 一次 accept 的结果：fd + 对端地址 */
 struct AcceptedConn
 {
     int fd;

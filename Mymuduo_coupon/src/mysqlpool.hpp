@@ -79,7 +79,7 @@ private:
     std::vector<MYSQL*> idle_;
 };
 
-// RAII 连接守卫：作用域内持有一个可用连接，作用域结束自动归还
+/** @brief RAII 连接守卫：构造借出连接，析构自动归还（异常路径也安全） */
 class MysqlConn
 {
 public:
