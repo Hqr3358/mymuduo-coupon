@@ -12,7 +12,7 @@
  *   couponclient stress <coupon_id> <users> <threads>   # 并发领券压测（防超发验证）
  *   couponclient dup <coupon_id> <user_id> <times>  # 同一用户并发重复领取（去重验证）
  *   couponclient stress-mix <coupon_id> <users> <threads>  # 并发领券+随机核销
- * 通用参数 [host] [port]，默认 127.0.0.1:8081
+ * 通用参数 [host] [port]，默认 127.0.0.1:9081
  */
 #include <arpa/inet.h>
 #include <netinet/in.h>
@@ -153,35 +153,42 @@ struct StressStat
     std::atomic<long> connFail{0};
 };
 
+// 优化：单次领券请求 + 统计（claimWorker/dupWorker 共用，消除重复代码）
+static void claimOnce(const std::string& host, int port, int64_t couponId,
+                      int64_t userId, StressStat* st)
+{
+    int fd = connectTcp(host, port);
+    if (fd < 0)
+    {
+        st->connFail++;
+        return;
+    }
+    json req = {{"msgid", MSG_CLAIM}, {"coupon_id", couponId}, {"user_id", userId}};
+    std::string out;
+    encodeFrame(out, req.dump());
+    try
+    {
+        sendAll(fd, out);
+        json resp = readResponse(fd);
+        int err = resp.value("errno", -1);
+        if (err == 0) st->ok++;
+        else if (err == 2) st->noStock++;
+        else if (err == 3) st->dup++;
+        else st->other++;
+    }
+    catch (...)
+    {
+        st->other++;
+    }
+    close(fd);
+}
+
 static void claimWorker(const std::string& host, int port, int64_t couponId,
                         int beginUid, int endUid, StressStat* st)
 {
     for (int uid = beginUid; uid < endUid; ++uid)
     {
-        int fd = connectTcp(host, port);
-        if (fd < 0)
-        {
-            st->connFail++;
-            continue;
-        }
-        json req = {{"msgid", MSG_CLAIM}, {"coupon_id", couponId}, {"user_id", uid}};
-        std::string out;
-        encodeFrame(out, req.dump());
-        try
-        {
-            sendAll(fd, out);
-            json resp = readResponse(fd);
-            int err = resp.value("errno", -1);
-            if (err == 0) st->ok++;
-            else if (err == 2) st->noStock++;
-            else if (err == 3) st->dup++;
-            else st->other++;
-        }
-        catch (...)
-        {
-            st->other++;
-        }
-        close(fd);
+        claimOnce(host, port, couponId, uid, st);
     }
 }
 
@@ -190,30 +197,7 @@ static void dupWorker(const std::string& host, int port, int64_t couponId, int64
 {
     for (int i = 0; i < times; ++i)
     {
-        int fd = connectTcp(host, port);
-        if (fd < 0)
-        {
-            st->connFail++;
-            continue;
-        }
-        json req = {{"msgid", MSG_CLAIM}, {"coupon_id", couponId}, {"user_id", userId}};
-        std::string out;
-        encodeFrame(out, req.dump());
-        try
-        {
-            sendAll(fd, out);
-            json resp = readResponse(fd);
-            int err = resp.value("errno", -1);
-            if (err == 0) st->ok++;
-            else if (err == 2) st->noStock++;
-            else if (err == 3) st->dup++;
-            else st->other++;
-        }
-        catch (...)
-        {
-            st->other++;
-        }
-        close(fd);
+        claimOnce(host, port, couponId, userId, st);
     }
 }
 

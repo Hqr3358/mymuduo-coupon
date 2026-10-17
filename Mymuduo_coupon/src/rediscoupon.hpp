@@ -85,11 +85,10 @@ public:
 
 private:
     redisContext* ctx(); // thread_local 懒连接
-    redisContext* rawCtx_;       // 主线程预连句柄（测试用）
+    redisContext* rawCtx_ = nullptr; // 主线程预连句柄（init 测试用，用完即释放）
     std::string host_;
     int port_ = 6379;
     std::string sha_;            // SCRIPT LOAD 缓存的结果
-    bool scriptLoaded_ = false;
 
     bool loadScript(redisContext* c);
 

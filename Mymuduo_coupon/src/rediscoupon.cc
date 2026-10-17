@@ -48,6 +48,10 @@ bool CouponRedis::init(const std::string& host, int port)
         rawCtx_ = nullptr;
         return false;
     }
+    // 优化：预连测试完成，立即释放主线程句柄（业务访问统一走 thread_local 懒连接），
+    // 避免 rawCtx_ 长期持有导致连接泄漏
+    redisFree(rawCtx_);
+    rawCtx_ = nullptr;
     Logmanage(NORMOL, "coupon redis connected %s:%d, script loaded", host.c_str(), port);
     return true;
 }
