@@ -24,7 +24,7 @@ class Timer
 {
 	using timeoutCallback=std::function<void()>;
 public:
-	Timer(EventLoop* loop):loop_(loop),timerfd_(createTimer())
+	Timer(EventLoop* loop):timerfd_(createTimer())
 	,timerchannel_(loop,timerfd_)
 	{
 		timerchannel_.SetrecvCallback(std::bind(&Timer::handleRead,this));
@@ -56,7 +56,6 @@ public:
 		timeoutCallback_();
 	}
 private:
-	EventLoop* loop_;
 	int timerfd_;
 	Channel timerchannel_;
 	timeoutCallback timeoutCallback_;
