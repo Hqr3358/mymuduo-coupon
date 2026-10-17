@@ -48,7 +48,7 @@ void CouponServer::onConnection(const TcpConnctionptr& conn)
     if (conn->conncted())
     {
         auto codec = std::make_shared<Codec>(
-            [this, conn](const std::string& payload)
+            [conn](const std::string& payload)
             {
                 // 注意：这里在业务线程池线程执行，conn 是 shared_ptr 拷贝，生命周期安全
                 try
