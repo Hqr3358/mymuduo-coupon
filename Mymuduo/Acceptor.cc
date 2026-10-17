@@ -9,7 +9,10 @@ static int createNonblock()
     if(fd<0) Logmanage(FATAL,"creat socket fail");
     return fd;
 }
-Acceptor::Acceptor(EventLoop*loop, uint16_t port): // 新增：端口参数传入 Socket::BindAddress
+/**
+ * @brief 新增：构造 Acceptor，端口参数传入 Socket::BindAddress（监听端口可配置）
+ */
+Acceptor::Acceptor(EventLoop*loop, uint16_t port):
 baseloop_(loop)
 ,accepsock_(createNonblock())
 ,accepchannel_(baseloop_,accepsock_.fd())
@@ -31,7 +34,10 @@ void Acceptor::listen()
     accepsock_.Listen();
     accepchannel_.SetEnableIn();
 }
-void Acceptor::handleRecv(TimeStamp& ti) // 新增：适配 Accept 返回 {fd,peer} 结构体
+/**
+ * @brief 新增：适配 Accept 返回 {fd,peer} 结构体，逐个回调 newConnctionCallback_
+ */
+void Acceptor::handleRecv(TimeStamp& ti)
 {
     std::vector<AcceptedConn> conns;
 	accepsock_.Accept(conns);

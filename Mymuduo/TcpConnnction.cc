@@ -126,9 +126,12 @@ void TcpConnction::send(const std::string& msg)
         else//不是一个线程下给该loop线程任务队列
         {
             // 注意：这里把 msg 拷贝成独立 string 捕获，避免悬垂指针
-            // 新增：修复悬垂指针：原实现 std::bind 只捕获 spMsg->data() 裸指针、
-            // 未持有 shared_ptr，spMsg 析构后指针失效，IO 线程 sendloop 读到已复用内存（实测响应头
-            // 出现垃圾字节 0x02801dff）。改为 lambda 捕获 shared_ptr，保证字符串与连接生命周期延续。
+            /**
+             * @brief 新增：修复悬垂指针（原实现 std::bind 只捕获 spMsg->data() 裸指针、
+             *        未持有 shared_ptr，spMsg 析构后指针失效，IO 线程 sendloop 读到已复用
+             *        内存，实测响应头出现垃圾字节 0x02801dff）。改为 lambda 捕获 shared_ptr，
+             *        保证字符串与连接生命周期延续到发送完成。
+             */
             auto spMsg = std::make_shared<std::string>(msg);
             loop_->queueInLoop([self = shared_from_this(), spMsg]()
             {

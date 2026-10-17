@@ -20,7 +20,10 @@ class Tcpserver
 {
     using ThreadInitCallback=std::function<void(EventLoop*)>;
 public:
-	explicit Tcpserver(EventLoop* loop, uint16_t port = 8081); // 新增：端口参数（向下透传 Acceptor）
+	/**
+	 * @brief 新增：新增端口参数（向下透传 Acceptor，默认 8081，优惠券服务用 9081）
+	 */
+	explicit Tcpserver(EventLoop* loop, uint16_t port = 8081);
     ~Tcpserver();
     void SetConntionCallback(ConntionCallback&& cb){conntionCallback_=std::move(cb);}
     void SetMessageCallback( MessageCallback&& cb){messageCallback_=std::move(cb);}

@@ -13,7 +13,10 @@ void Socket::Listen()
         Logmanage(FATAL,"listen fali");
     }
 }
-void Socket::Accept(std::vector<AcceptedConn>& conns) // 新增：批量 accept，每个 fd 携带自己的 peer
+/**
+ * @brief 新增：批量 accept，每个 fd 携带自己的 peer 地址
+ */
+void Socket::Accept(std::vector<AcceptedConn>& conns)
 {
     sockaddr_in peer;
     socklen_t len = sizeof(peer);
@@ -26,8 +29,7 @@ void Socket::Accept(std::vector<AcceptedConn>& conns) // 新增：批量 accept�
         {
             // 新增：修复：原来所有 fd 共用最后一次 accept 的 peer，
             // 导致同端口名连接覆盖；现在每个 fd 保存自己 accept 时的对端地址
-            conns.push_back({fd, peer});
-        }
+            conns.push_back({fd, peer});        }
         else
         {
             if (savedErrno == EINTR) continue;
@@ -40,7 +42,10 @@ void Socket::Accept(std::vector<AcceptedConn>& conns) // 新增：批量 accept�
         }
     }
 }
-void Socket::BindAddress(uint16_t port) // 新增：原实现写死 8081，改为可配置端口
+/**
+ * @brief 新增：绑定监听端口（原实现写死 8081，改为可配置端口）
+ */
+void Socket::BindAddress(uint16_t port)
 {
     sockaddr_in localaddr;
     memset(&(localaddr), 0,sizeof(localaddr));
