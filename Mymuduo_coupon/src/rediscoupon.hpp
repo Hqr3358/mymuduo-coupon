@@ -64,12 +64,21 @@ public:
 
     /**
      * @brief 核销成功缓存已核销券码（快速幂等路径）
+     *   优化：写缓存时设置 7 天 TTL 自动过期（kUsedCacheTtlSec），
+     *   避免 coupon:used:* 无限增长；缓存过期后由 DB 原子 UPDATE 兜底，
+     *   幂等语义不变。
      */
     bool markUsed(const std::string& couponCode);
     /**
      * @brief 快速判"已核销"（仅加速，最终以 DB 原子 UPDATE 为准）
      */
     bool isUsed(const std::string& couponCode);
+
+    /**
+     * @brief 优化：删除某张券的 Redis 库存/领取集合缓存
+     *   （定时清理器下架过期券时调用，防残留 key 泄漏内存）
+     */
+    void clearCouponCache(int64_t couponId);
 
     // 供文档/展示的 Lua 脚本（与 rediscoupon.cc 内嵌一致）
     static const char* kClaimLua;
@@ -83,4 +92,7 @@ private:
     bool scriptLoaded_ = false;
 
     bool loadScript(redisContext* c);
+
+    /** 优化：核销缓存 TTL（秒）= 7 天，到期自动过期（DB 兜底幂等） */
+    static constexpr int kUsedCacheTtlSec = 7 * 86400;
 };

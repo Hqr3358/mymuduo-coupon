@@ -171,6 +171,9 @@ LD_LIBRARY_PATH=../mymudo/lib ./couponserver 9081 8
 | 领券唯一索引冲突幂等化 | 若 Redis 数据丢失（重启/FLUSHALL）而 MySQL 已有领取记录，原逻辑落库失败时一律 `SREM` 移除 claimed 集合，用户会**反复走"可领取→唯一索引冲突→再移除"循环**，永远无法 duplicate 且反复打 DB | 区分 MySQL 错误号：`ER_DUP_ENTRY(1062)` 时保持 claimed 集合（用户已在其中），仅回补库存并按 `ERR_DUP_CLAIM` 幂等返回；其他错误才完整回滚 | 模拟 `DEL coupon:claimed:{id}` 后：第 2 次返回 errno=3（db unique index）且库存回补一致，第 3 次在 Redis 层直接 duplicate，库存/DB 行数均正确 |
 | MySQL 连接池取连接有限等待 | 空闲连接耗尽时 `doGet` 立即返回空，高并发瞬时无连接可用的请求直接报 `ERR_DB` | `doGet` 改为条件变量等待（默认 3s），归还时 `notify_one` 唤醒 | 200 并发抢 50 库存（8 业务线程/8 连接）：成功 50 / 无库存 150 / 其他错误 0 / 连接失败 0 |
 | 服务端端口/线程数参数化 | 端口与业务线程数硬编码，部署不同环境需改代码 | `./couponserver [port] [businessThreads]`（默认 9081/8） | 以 `./couponserver 9081 8` 启动正常 |
+| 优惠券定时清理（后台线程，60s 周期） | 过期券残留：券模板不下架、Redis stock/claimed key 无限累积、用户券无过期状态 | 后台清理线程：①过期券下架（`coupon.status 1->0`）；②`DEL` 下架券的 Redis stock/claimed 缓存；③分表中未核销用户券标记已过期（`status=2`）；核销缓存 `coupon:used:*` 设 7 天 TTL 自动过期 | 构造过期券实测：下架 2 张、Redis key 全部删除、未核销记录 status 0->2、已核销记录保持不变，日志 `offline=2, marked expired=1`；TTL=604800 |
+
+> 用户券 `status` 语义：0=未使用，1=已核销，2=已过期（定时清理器标记）
 
 ## 端到端验证结果（本机实测）
 

@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <ctime>
 #include <random>
 #include <thread>
@@ -407,4 +408,89 @@ std::string CouponService::futureStr(int days)
                   lt.tm_year + 1900, lt.tm_mon + 1, lt.tm_mday,
                   lt.tm_hour, lt.tm_min, lt.tm_sec);
     return buf;
+}
+
+// ==================== 优化：定时清理 ====================
+
+void CouponService::startCleaner()
+{
+    // 优化：启动后台清理线程，每 kCleanIntervalSec 秒执行一轮 cleanExpired。
+    //   线程内首次调用 Redis 时会通过 thread_local 懒加载自己的连接，
+    //   与业务线程的连接互不干扰；随进程退出终止，无需显式 join。
+    if (cleanerRunning_.exchange(true))
+    {
+        return; // 已启动，幂等
+    }
+    cleaner_ = std::thread([this]
+                           {
+                               while (cleanerRunning_)
+                               {
+                                   std::this_thread::sleep_for(
+                                       std::chrono::seconds(kCleanIntervalSec));
+                                   cleanExpired();
+                               }
+                           });
+}
+
+void CouponService::cleanExpired()
+{
+    // 优化：单轮清理——过期券下架 + Redis 缓存清理 + 分表状态标记
+    // 1) 找出"已上线(status=1)且已过期(end_time < NOW())"的券
+    ResultSet rs;
+    {
+        MysqlConn mc(&mysql_);
+        if (!mc.query("SELECT id FROM coupon WHERE status = 1 AND end_time < NOW()", &rs))
+        {
+            Logmanage(ERR, "cleaner: query expired coupons failed");
+            return;
+        }
+    }
+    if (rs.empty())
+    {
+        return;
+    }
+
+    int downCount = 0;
+    int userMarkCount = 0;
+    for (size_t i = 0; i < rs.rows(); ++i)
+    {
+        int64_t couponId = std::atoll(rs.get(i, "id").c_str());
+
+        // 2) 下架：status 1 -> 0（带 status=1 条件，幂等防重复下架）
+        {
+            MysqlConn mc(&mysql_);
+            ResultSet r1;
+            if (!mc.execute("UPDATE coupon SET status = 0 WHERE id = " +
+                                std::to_string(couponId) + " AND status = 1", &r1))
+            {
+                Logmanage(ERR, "cleaner: offline coupon %lld failed", (long long)couponId);
+                continue;
+            }
+            if (r1.affectedRows() == 1)
+            {
+                ++downCount;
+            }
+        }
+
+        // 3) 清理 Redis 库存/领取集合缓存（防残留 key 泄漏内存）
+        redis_.clearCouponCache(couponId);
+
+        // 4) 将该券在各分表中"未核销(status=0)"的用户券标记为已过期(status=2)
+        for (int shard = 0; shard < kShardCount; ++shard)
+        {
+            std::string tbl = "user_coupon_" + std::to_string(shard);
+            MysqlConn mc(&mysql_);
+            ResultSet r2;
+            std::string sql = "UPDATE " + tbl + " SET status = 2 "
+                              "WHERE coupon_id = " + std::to_string(couponId) + " AND status = 0";
+            if (mc.execute(sql, &r2))
+            {
+                userMarkCount += static_cast<int>(r2.affectedRows());
+            }
+            // 单表失败不中断，继续清理其他分表
+        }
+    }
+
+    Logmanage(NORMOL, "cleaner: expired coupons offline=%d, user coupons marked expired=%d",
+              downCount, userMarkCount);
 }

@@ -202,7 +202,9 @@ bool CouponRedis::markUsed(const std::string& couponCode)
 {
     redisContext* c = ctx();
     if (!c) return false;
-    redisReply* r = (redisReply*)redisCommand(c, "SET coupon:used:%s 1", couponCode.c_str());
+    // 优化：SET 带 EX 7 天 TTL，缓存到期自动过期（见头文件说明）
+    redisReply* r = (redisReply*)redisCommand(c, "SET coupon:used:%s 1 EX %d",
+                                              couponCode.c_str(), kUsedCacheTtlSec);
     if (r)
     {
         freeReplyObject(r);
@@ -220,4 +222,16 @@ bool CouponRedis::isUsed(const std::string& couponCode)
     bool used = (r->type == REDIS_REPLY_STRING);
     freeReplyObject(r);
     return used;
+}
+
+void CouponRedis::clearCouponCache(int64_t couponId)
+{
+    // 优化：删除券的库存/领取集合缓存（定时清理器下架过期券时调用）
+    redisContext* c = ctx();
+    if (!c) return;
+
+    std::string stockKey = "coupon:stock:" + std::to_string(couponId);
+    std::string claimedKey = "coupon:claimed:" + std::to_string(couponId);
+    redisReply* r = (redisReply*)redisCommand(c, "DEL %s %s", stockKey.c_str(), claimedKey.c_str());
+    if (r) freeReplyObject(r);
 }

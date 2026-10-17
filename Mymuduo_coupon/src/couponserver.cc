@@ -22,12 +22,15 @@ void CouponServer::SetThreadnum(int n)
 
 void CouponServer::start()
 {
-    if (!CouponService::init()->ready())
+    CouponService* svc = CouponService::init();
+    if (!svc->ready())
     {
         Logmanage(ERR, "CouponService not ready (%s), exit",
                   CouponService::init()->error().c_str());
         exit(1);
     }
+    // 优化：服务就绪后启动定时清理线程（过期券下架 + Redis 缓存清理 + 分表状态标记）
+    svc->startCleaner();
     server_.start();
 }
 
