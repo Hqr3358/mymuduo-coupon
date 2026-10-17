@@ -11,3 +11,10 @@ CompileFlags:
     - "-std=c++17"
     - "-Wall"
     - "-pthread"
+
+# 关闭 unused includes 误报：部分必需头文件（如 couponservice.cc 的
+# TcpConnnction.hpp，供 conn->send 完整类型）会被 clangd 插件判定为
+# 未直接使用，实际编译必需；已修的冗余 include 均为真实删除，此诊断
+# 对本项目无增量价值，统一关闭避免编辑器误报。
+Diagnostics:
+  UnusedIncludes: None
