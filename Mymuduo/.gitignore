@@ -1,0 +1,11 @@
+# 忽略编译产物与缓存
+build/
+lib/
+.cache/
+.vscode/
+.clangd/
+*.o
+*.so
+*.a
+*.out
+*.log

@@ -147,15 +147,15 @@ Mymuduo_coupon/
 # 0) 依赖：MySQL 8.x、Redis、libmysqlclient、libhiredis、nlohmann-json
 sudo apt-get install -y mysql-server redis-server libhiredis-dev nlohmann-json3-dev libmysqlclient-dev
 
-# 1) 先编译自研库（Mymuduo 项目）
-cd ../mymudo/build && cmake .. && make -j4
+# 1) 先编译自研库（仓库内置，位于本工程上级目录 ../Mymuduo）
+cd ../Mymuduo/build && cmake .. && make -j4
 
 # 2) 初始化数据库（建库 + 17 张表 + 账号 coupon/coupon123）
 mysql -uroot < sql/init.sql
 
 # 3) 编译并启动优惠券服务器（支持参数：./couponserver [port] [businessThreads]，默认 9081 / 8）
 mkdir -p build && cd build && cmake .. && make -j4
-LD_LIBRARY_PATH=../mymudo/lib ./couponserver 9081 8
+LD_LIBRARY_PATH=../Mymuduo/lib ./couponserver 9081 8
 
 # 4) 压测/演示
 ./couponclient issue "秒杀券" 50              # 发券

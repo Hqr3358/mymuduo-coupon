@@ -6,6 +6,8 @@ lib/
 .vscode/
 .idea/
 .clangd/
+Mymuduo/build/
+Mymuduo/lib/
 
 # 忽略编译生成的文件
 *.o

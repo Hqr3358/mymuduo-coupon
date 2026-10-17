@@ -2,36 +2,40 @@
 
 基于**自研 Mymuduo 网络库**（仿 muduo）的完整优惠券业务系统：**发券 / 领券 / 核销**，Redis 防超发 + MySQL 唯一索引/16 分表。
 
-## 目录结构
+## 目录结构（单仓库自包含）
 
 ```
 mymuduo-coupon/
-└── Mymuduo_coupon/          # 优惠券系统（本仓库全部内容）
-    ├── src/                 # 协议、解码器、MySQL 连接池、Redis 客户端、业务服务
-    ├── client/              # 压测/演示客户端（纯 POSIX socket）
-    ├── sql/                 # 建表 + 16 分表 DDL
-    ├── redis/               # 防超发 Lua 脚本
+├── Mymuduo/                # 自研 muduo 网络库源码（已并入本仓库，无需单独拉取）
+│   ├── EventLoop / Acceptor / TcpConnnection / Tcpserver / BusinessThreadPool ...
+│   └── CMakeLists.txt
+└── Mymuduo_coupon/         # 优惠券系统
+    ├── src/                # 协议、解码器、MySQL 连接池、Redis 客户端、业务服务
+    ├── client/             # 压测/演示客户端（纯 POSIX socket）
+    ├── sql/                # 建表 + 16 分表 DDL
+    ├── redis/              # 防超发 Lua 脚本
     └── CMakeLists.txt
 ```
 
-> 自研网络库（`mymudo`）为**独立仓库**：`github.com/Hqr3358/mymudo`，本工程编译时通过 `MYMUDUO_DIR` 引用（默认取上级目录 `../mymudo`，可 `-DMYMUDUO_DIR=` 覆盖）。
+> 网络库源码同步自 `github.com/Hqr3358/mymudo`（含悬垂指针/peer 地址/Redis 线程安全修复、端口可配置、Doxygen 注释）。
+> 编译时 `MYMUDUO_DIR` 默认取仓库内置的 `../Mymuduo`，也兼容外部 `../mymudo` 布局，或 `-DMYMUDUO_DIR=` 覆盖。
 
 ## 快速开始
 
 ```bash
-# 1. 拉取网络库（放在本仓库同级目录，默认路径 ../mymudo）
-git clone git@github.com:Hqr3358/mymudo.git
+# 1. 拉取本仓库（网络库已在仓库内）
+git clone git@github.com:Hqr3358/mymuduo-coupon.git
 
 # 2. 编译网络库
-cd mymudo && mkdir -p build && cd build \
+cd mymuduo-coupon/Mymuduo && mkdir -p build && cd build \
   && cmake .. && make -j4   # 产物：lib/libmymuduo.so
 
 # 3. 编译优惠券系统
-cd ../Mymuduo_coupon && mkdir -p build && cd build \
-  && cmake .. && make -j4   # 若网络库在其他路径：cmake -DMYMUDUO_DIR=... ..
+cd ../../Mymuduo_coupon && mkdir -p build && cd build \
+  && cmake .. && make -j4
 
-# 4. 启动（Redis/MySQL 就绪后）
-LD_LIBRARY_PATH=../mymudo/lib ./couponserver
+# 4. 启动（Redis/MySQL 就绪后，端口/业务线程可配）
+LD_LIBRARY_PATH=../Mymuduo/lib ./couponserver 9081 8
 ```
 
 详细功能、验证结果与面试讲解见 [Mymuduo_coupon/README.md](Mymuduo_coupon/README.md)。
