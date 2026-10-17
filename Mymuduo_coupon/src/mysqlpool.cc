@@ -5,7 +5,7 @@
 // ==================== ResultSet ====================
 
 /**
- * @brief 结果集：一次性取回全部数据（mysql_store_result），提供行列/列名访问
+ * @brief 构造空结果集对象（数据由 fill() 从 MYSQL_RES 填充）
  */
 ResultSet::ResultSet() {}
 ResultSet::~ResultSet() {}

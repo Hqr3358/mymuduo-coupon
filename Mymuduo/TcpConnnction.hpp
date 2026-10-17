@@ -57,13 +57,9 @@ public:
     void conntDestoy();//连接销毁
 /** @brief 发送数据（线程安全）：跨线程自动转 queueInLoop 到 IO 线程 */
 	void send(const std::string& msg);//给我要发送的数据接口
-/** @brief 主动关闭连接（业务侧调用） */
-    void shutdown();//断开连接接口
 private:
 /** @brief IO 线程内发送：优先直写，写不完挂 write 事件 */
 	void sendloop(const char* data,int len);//在自己所在的loop线程中发送数据
-/** @brief IO 线程内断开：从连接表与 epoll 移除 */
-    void shutdownInloop();//断开连接将自己从tcpserver中的vector中去掉,和从epoller中去掉
 /** @brief 可读事件处理：读入 Buffer，按读回调分发（业务消息入口） */
 	void handleRead(TimeStamp ti);//给channel的读回调函数
 /** @brief 可写事件处理：继续发送剩余缓冲数据 */

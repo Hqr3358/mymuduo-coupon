@@ -71,12 +71,6 @@ void Buffer::append(const char* data,size_t len)
 /** @brief 从 fd 读入缓冲（一次读满），返回读取字节数 */
 ssize_t Buffer::readFd(int fd,int* saveErrno)
 {
-    /*struct iovec
-  {
-    void *iov_base;	 Pointer to data.  
-    size_t iov_len;	 Length of data.  
-  };
-  	*/
     char extrabuf[65536];
     struct iovec iovc[2];
     size_t writeable=writeableBytes();

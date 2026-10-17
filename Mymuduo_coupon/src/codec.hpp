@@ -25,8 +25,7 @@ public:
     explicit Codec(MessageCallback cb);
 
     /**
-     * @brief 线程安全：任意业务线程可调用。
-     *        累积 data 并切出完整包，每切出一个包在锁外调用 onMessage
+     * @brief 累积解码：任意业务线程可调用（锁内切包），每切出一个完整包在锁外回调 onMessage
      */
     void feed(const char* data, size_t len);
 
