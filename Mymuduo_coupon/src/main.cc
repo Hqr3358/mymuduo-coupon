@@ -12,6 +12,14 @@ static void handleSignal(int sig)
     exit(0);
 }
 
+/**
+ * @brief 【功能】服务端启动入口
+ * @details 用法：./couponserver [port] [businessThreads]（默认 9081 / 8）。
+ *          - 网络库层：sub-reactor IO 线程 = hardware_concurrency，
+ *            业务线程池 = businessThreads（承担 MySQL/Redis 阻塞调用）；
+ *          - 服务就绪后启动定时清理线程（CouponService::startCleaner）；
+ *          - SIGINT/SIGTERM 优雅退出，SIGPIPE 忽略（send 已 MSG_NOSIGNAL）。
+ */
 int main(int argc, char** argv)
 {
     signal(SIGINT, handleSignal);

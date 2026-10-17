@@ -47,12 +47,30 @@ public:
 private:
     CouponService();
 
-    // ---- 业务处理 ----
+    // ---- 业务处理（实现见 couponservice.cc，均有功能级 @brief 注释）----
+    /**
+     * @brief 【功能】心跳探测（ping 连接）
+     */
     void onPing(const TcpConnctionptr& conn, const json& js);
-    void onIssue(const TcpConnctionptr& conn, const json& js);   // 发券
-    void onClaim(const TcpConnctionptr& conn, const json& js);   // 领券
-    void onUse(const TcpConnctionptr& conn, const json& js);     // 核销
+    /**
+     * @brief 【功能】发券：券模板入库 + Redis 库存初始化
+     */
+    void onIssue(const TcpConnctionptr& conn, const json& js);
+    /**
+     * @brief 【功能】领券：Redis Lua 原子防超发/去重 + MySQL 唯一索引兜底（含 1062 幂等回补）
+     */
+    void onClaim(const TcpConnctionptr& conn, const json& js);
+    /**
+     * @brief 【功能】核销：版本号乐观锁（version 条件更新+冲突重试）+ Redis 已核销缓存双保险幂等
+     */
+    void onUse(const TcpConnctionptr& conn, const json& js);
+    /**
+     * @brief 【功能】查询我的券：user_id % 5 路由单分表查询
+     */
     void onQueryMine(const TcpConnctionptr& conn, const json& js);
+    /**
+     * @brief 【功能】查询券模板详情（含 Redis 实时库存）
+     */
     void onQuery(const TcpConnctionptr& conn, const json& js);
 
     /**

@@ -107,6 +107,14 @@ bool MysqlPool::ensureAlive(MYSQL*& conn)
     return true;
 }
 
+/**
+ * @brief 【功能】连接池取连接：空闲队列阻塞等待（条件变量机制）
+ * @details 对应功能测试第 11 项「连接池等待」：空闲队列为空时
+ *          cv_.wait_for 有限等待 kGetTimeoutMs(3s)，期间有连接归还
+ *          （doPut 中 notify_one）即唤醒；超时仍无连接才返回 nullptr，
+ *          由业务层走 ERR_DB/重试路径，避免高并发瞬时耗尽连接池时直接失败。
+ * @return 空闲 MYSQL* 连接；超时无连接返回 nullptr
+ */
 MYSQL* MysqlPool::doGet()
 {
     // 优化：空闲队列为空时条件变量有限等待（3s），期间归还的连接会唤醒
@@ -122,6 +130,12 @@ MYSQL* MysqlPool::doGet()
     return c;
 }
 
+/**
+ * @brief 【功能】连接池归还连接：入队并唤醒一个等待线程
+ * @details RAII（MysqlConn 析构）调用；notify_one 唤醒 doGet 中
+ *          条件变量等待的线程，保证高并发下连接能被及时复用。
+ * @param conn 待归还的 MYSQL* 连接
+ */
 void MysqlPool::doPut(MYSQL* conn)
 {
     if (!conn) return;

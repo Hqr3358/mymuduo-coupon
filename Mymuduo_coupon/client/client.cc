@@ -142,8 +142,13 @@ static json request(const std::string& host, int port, const json& req)
 }
 
 // =====================================================================
-// 并发压测：users 个用户（每用户独立 TCP 连接）并发领券
+// 压测统计结构 + 各压测 worker（对应 README 的 stress / dup / stress-mix）
 // =====================================================================
+/**
+ * @brief 【功能】压测结果统计：按 errno 分类计数
+ * @details ok=成功(0)，noStock=无库存(2)，dup=重复领取(3)，
+ *          other=其他错误，connFail=连接失败——用于防超发/去重断言。
+ */
 struct StressStat
 {
     std::atomic<long> ok{0};
@@ -153,7 +158,10 @@ struct StressStat
     std::atomic<long> connFail{0};
 };
 
-// 优化：单次领券请求 + 统计（claimWorker/dupWorker 共用，消除重复代码）
+/**
+ * @brief 【功能】单次领券请求 + 统计（claimWorker/dupWorker 共用，消除重复代码）
+ * @details 每个用户独立 TCP 连接发起 MSG_CLAIM，按 errno 归类到 StressStat。
+ */
 static void claimOnce(const std::string& host, int port, int64_t couponId,
                       int64_t userId, StressStat* st)
 {
@@ -183,6 +191,11 @@ static void claimOnce(const std::string& host, int port, int64_t couponId,
     close(fd);
 }
 
+/**
+ * @brief 【功能】并发领券压测 worker（couponclient stress）
+ * @details 对应功能测试第 2 项「防超发」：beginUid..endUid 每个用户领一次，
+ *          多线程并发；期望结果 = 成功数等于库存、其余全部 noStock、dup=0。
+ */
 static void claimWorker(const std::string& host, int port, int64_t couponId,
                         int beginUid, int endUid, StressStat* st)
 {
@@ -192,6 +205,11 @@ static void claimWorker(const std::string& host, int port, int64_t couponId,
     }
 }
 
+/**
+ * @brief 【功能】同一用户并发重复领取压测 worker（couponclient dup）
+ * @details 对应功能测试第 3 项「领取去重」：同一 userId 并发领 times 次，
+ *          期望结果 = 成功 1 / 重复领取 times-1（Redis Lua SADD 去重）。
+ */
 static void dupWorker(const std::string& host, int port, int64_t couponId, int64_t userId,
                       int times, StressStat* st)
 {
@@ -201,7 +219,12 @@ static void dupWorker(const std::string& host, int port, int64_t couponId, int64
     }
 }
 
-// 并发领券 + 成功后随机核销：验证全链路 + 核销幂等
+/**
+ * @brief 【功能】并发领券 + 成功后随机双核销压测 worker（couponclient stress-mix）
+ * @details 对应功能测试第 10 项「全链路验证」：领券成功后同一连接连续核销两次，
+ *          第一次应成功(errno=0)、第二次应幂等返回已核销(errno=6)；
+ *          other>0 即视为核销幂等失效。
+ */
 static void mixWorker(const std::string& host, int port, int64_t couponId,
                       int beginUid, int endUid, StressStat* st)
 {

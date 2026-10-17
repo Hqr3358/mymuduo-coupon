@@ -91,6 +91,17 @@ bool CouponRedis::loadScript(redisContext* c)
     return ok;
 }
 
+/**
+ * @brief 【功能】领券原子操作（对应功能测试第 2/3 项：防超发 + 领取去重）
+ * @details 执行 claim_coupon.lua（EVALSHA，NOSCRIPT 时回退 EVAL）：
+ *          单脚本内原子完成「库存检查 → DECR → SADD 用户」，Redis 单线程
+ *          执行脚本无并发竞态；返回剩余库存（>=0）/ -1 无库存 / -2 已领取 /
+ *          -3 券不存在。
+ * @param couponId 券 ID
+ * @param userId   用户 ID
+ * @param remain   出参：该用户领取后的剩余库存
+ * @return ERR_OK / ERR_NO_STOCK / ERR_DUP_CLAIM / ERR_NOT_EXIST / ERR_REDIS
+ */
 int CouponRedis::claimTry(int64_t couponId, int64_t userId, long* remain)
 {
     redisContext* c = ctx();

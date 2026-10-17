@@ -119,11 +119,20 @@ private:
 };
 
 /**
- * @brief 分表路由：user_coupon_{0..kShardCount-1}，按 user_id 取模
- *   同一用户的所有券落在同一张表：查询亲和、唯一索引冲突局域化
+ * @brief 【功能】分表数量：kShardCount = 5（user_coupon_{0..4}）
+ * @details 用户券按 user_id % 5 水平拆分（原为 16，收敛为 5 简化部署）：
+ *   - 写热点分散到 5 张表，缓解单表锁竞争与 IO 压力；
+ *   - 同一用户所有券固定在同一张表：查询亲和、唯一索引冲突局域化。
  */
 static constexpr int kShardCount = 5;
 
+/**
+ * @brief 【功能】分表路由：user_id % kShardCount → "user_coupon_N"
+ * @details 对应功能测试第 8 项「分表路由」：如 88888 % 5 = 3 → user_coupon_3。
+ *          领券写入、核销、查询我的券均通过该函数定位唯一分表。
+ * @param userId 用户 ID（分表键）
+ * @return 分表名（如 user_coupon_3）
+ */
 inline std::string userCouponTable(int64_t userId)
 {
     return "user_coupon_" + std::to_string(static_cast<int>(userId % kShardCount));
