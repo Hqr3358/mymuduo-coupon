@@ -21,3 +21,7 @@ MymuduoProject/.vscode/
 *.tmp
 *.bak
 .vscode/
+Mymuduo/lib/
+Mymuduo/build/
+.fuse*
+*.fuse*

@@ -14,7 +14,8 @@ class BusinessThreadPool
 public:
     using Task = std::function<void()>;
 
-    explicit BusinessThreadPool(int numThreads = 4);
+    // maxQueueSize：任务队列最大长度，超过就拒绝新任务，防止内存OOM
+    explicit BusinessThreadPool(int numThreads = 4, size_t maxQueueSize = 2000);
     ~BusinessThreadPool();
 
     BusinessThreadPool(const BusinessThreadPool&) = delete;
@@ -25,12 +26,17 @@ public:
     // 停止并等待所有工作线程退出
     void stop();
     // 投递一个任务到队列，由空闲工作线程执行
-    void enqueue(Task task);
+    // 返回 true=入队成功；false=队列已满，任务被拒绝（限流）
+    bool enqueue(Task task);
+    // 获取当前队列积压任务数（监控负载用）
+    size_t getQueueSize();
 
 private:
     void workerLoop();
 
     int numThreads_;
+    // 任务队列最大容量，超过就拒绝
+    size_t maxQueueSize_;
     std::vector<std::thread> workers_;
     std::queue<Task> taskQueue_;
     std::mutex mtx_;

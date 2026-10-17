@@ -1,8 +1,10 @@
 #include "BusinessThreadPool.hpp"
 #include "log.hpp"
 
-BusinessThreadPool::BusinessThreadPool(int numThreads)
+BusinessThreadPool::BusinessThreadPool(int numThreads, size_t maxQueueSize)
     : numThreads_(numThreads)
+    // 初始化队列上限
+    , maxQueueSize_(maxQueueSize)
     , running_(false)
 {
 }
@@ -19,7 +21,9 @@ void BusinessThreadPool::start()
     {
         workers_.emplace_back([this]() { workerLoop(); });
     }
-    Logmanage(NORMOL, "business thread pool started, thread num:%d", numThreads_);
+    // 启动日志里带上队列上限
+    Logmanage(NORMOL, "business thread pool started, thread num:%d, max queue size:%zu",
+              numThreads_, maxQueueSize_);
 }
 
 void BusinessThreadPool::stop()
@@ -36,13 +40,29 @@ void BusinessThreadPool::stop()
     workers_.clear();
 }
 
-void BusinessThreadPool::enqueue(Task task)
+// 入队加限流：队列满直接拒绝，不阻塞IO线程
+bool BusinessThreadPool::enqueue(Task task)
 {
     {
         std::lock_guard<std::mutex> lock(mtx_);
+        // 队列长度达到上限，拒绝新任务，打印日志
+        if (taskQueue_.size() >= maxQueueSize_)
+        {
+            Logmanage(ERR, "business pool queue full! size:%zu max:%zu, reject task",
+                      taskQueue_.size(), maxQueueSize_);
+            return false;
+        }
         taskQueue_.push(std::move(task));
     }
     cv_.notify_one();
+    return true;
+}
+
+// 返回当前队列积压数，给定时器/监控用
+size_t BusinessThreadPool::getQueueSize()
+{
+    std::lock_guard<std::mutex> lock(mtx_);
+    return taskQueue_.size();
 }
 
 void BusinessThreadPool::workerLoop()

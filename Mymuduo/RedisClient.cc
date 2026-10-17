@@ -14,8 +14,9 @@ RedisClient::~RedisClient()
     disconnect();
 }
 
-bool RedisClient::connect(const std::string& host, int port)
+bool RedisClient::connect(const std::string& host, int port) // 新增：加锁
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     ctx_ = redisConnect(host.c_str(), port);
     if (ctx_ == nullptr || ctx_->err)
     {
@@ -26,8 +27,9 @@ bool RedisClient::connect(const std::string& host, int port)
     return true;
 }
 
-void RedisClient::disconnect()
+void RedisClient::disconnect() // 新增：加锁
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     if (ctx_)
     {
         redisFree(ctx_);
@@ -35,8 +37,9 @@ void RedisClient::disconnect()
     }
 }
 
-bool RedisClient::updateActiveTime(const std::string& connName, time_t now)
+bool RedisClient::updateActiveTime(const std::string& connName, time_t now) // 新增：加锁
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     if (!ctx_) return false;
     redisReply* r = (redisReply*)redisCommand(ctx_, "ZADD %s %ld %s",
                                               key_.c_str(), (long)now, connName.c_str());
@@ -49,8 +52,9 @@ bool RedisClient::updateActiveTime(const std::string& connName, time_t now)
     return true;
 }
 
-bool RedisClient::getTimeoutConns(time_t now, time_t timeoutSec, std::vector<std::string>& out)
+bool RedisClient::getTimeoutConns(time_t now, time_t timeoutSec, std::vector<std::string>& out) // 新增：加锁
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     if (!ctx_) return false;
     long maxScore = (long)(now - timeoutSec);
     redisReply* r = (redisReply*)redisCommand(ctx_, "ZRANGEBYSCORE %s -inf %ld",
@@ -74,8 +78,9 @@ bool RedisClient::getTimeoutConns(time_t now, time_t timeoutSec, std::vector<std
     return true;
 }
 
-bool RedisClient::removeConn(const std::string& connName)
+bool RedisClient::removeConn(const std::string& connName) // 新增：加锁
 {
+    std::lock_guard<std::mutex> lock(mtx_);
     if (!ctx_) return false;
     redisReply* r = (redisReply*)redisCommand(ctx_, "ZREM %s %s",
                                               key_.c_str(), connName.c_str());

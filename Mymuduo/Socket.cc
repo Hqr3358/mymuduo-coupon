@@ -13,36 +13,39 @@ void Socket::Listen()
         Logmanage(FATAL,"listen fali");
     }
 }
-void Socket::Accept(sockaddr_in& peer,std::vector<int>& fds)
+void Socket::Accept(std::vector<AcceptedConn>& conns) // 新增：批量 accept，每个 fd 携带自己的 peer
 {
-    socklen_t len=sizeof(peer);
+    sockaddr_in peer;
+    socklen_t len = sizeof(peer);
     int savedErrno;
-    while(true)
+    while (true)
     {
-        int fd=accept4(sockfd_, (sockaddr *)&peer,&len,SOCK_NONBLOCK);
-        savedErrno=errno;
-        if(fd>0)
+        int fd = accept4(sockfd_, (sockaddr*)&peer, &len, SOCK_NONBLOCK);
+        savedErrno = errno;
+        if (fd > 0)
         {
-            fds.push_back(fd);
+            // 新增：修复：原来所有 fd 共用最后一次 accept 的 peer，
+            // 导致同端口名连接覆盖；现在每个 fd 保存自己 accept 时的对端地址
+            conns.push_back({fd, peer});
         }
         else
         {
-            if(savedErrno==EINTR) continue;
-            else if(savedErrno==EAGAIN||savedErrno==EWOULDBLOCK) break;
+            if (savedErrno == EINTR) continue;
+            else if (savedErrno == EAGAIN || savedErrno == EWOULDBLOCK) break;
             else
             {
-                Logmanage(ERR,"accept4 failed");
+                Logmanage(ERR, "accept4 failed");
                 break;
             }
         }
     }
 }
-void Socket::BindAddress()
+void Socket::BindAddress(uint16_t port) // 新增：原实现写死 8081，改为可配置端口
 {
     sockaddr_in localaddr;
     memset(&(localaddr), 0,sizeof(localaddr));
     localaddr.sin_family=AF_INET;
-    localaddr.sin_port=htons(8081);
+    localaddr.sin_port=htons(port);
     localaddr.sin_addr.s_addr=INADDR_ANY;
 	if(bind(sockfd_,(sockaddr*)&localaddr,sizeof(localaddr))<0)
     {

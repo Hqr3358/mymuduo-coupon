@@ -9,7 +9,7 @@ class Acceptor
 {
     using NewConnctionCallback=std::function<void(int,const sockaddr_in&)>;
 public:
-	Acceptor(EventLoop*loop);
+	Acceptor(EventLoop*loop, uint16_t port = 8081); // 新增：端口参数（配合 Socket::BindAddress 可配置端口）
     ~Acceptor();
     void SetNewConnctionCallback(NewConnctionCallback&& cb)
     {

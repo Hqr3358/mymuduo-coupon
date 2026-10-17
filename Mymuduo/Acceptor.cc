@@ -9,7 +9,7 @@ static int createNonblock()
     if(fd<0) Logmanage(FATAL,"creat socket fail");
     return fd;
 }
-Acceptor::Acceptor(EventLoop*loop):
+Acceptor::Acceptor(EventLoop*loop, uint16_t port): // 新增：端口参数传入 Socket::BindAddress
 baseloop_(loop)
 ,accepsock_(createNonblock())
 ,accepchannel_(baseloop_,accepsock_.fd())
@@ -17,7 +17,7 @@ baseloop_(loop)
 {
     accepsock_.SetReuseAddr(true);
     accepsock_.SetReusePort(true);
-    accepsock_.BindAddress();
+    accepsock_.BindAddress(port);
     accepchannel_.SetrecvCallback(std::bind(&Acceptor::handleRecv,this,std::placeholders::_1));
 }
 Acceptor::~Acceptor()
@@ -31,21 +31,21 @@ void Acceptor::listen()
     accepsock_.Listen();
     accepchannel_.SetEnableIn();
 }
-void Acceptor::handleRecv(TimeStamp& ti)
+void Acceptor::handleRecv(TimeStamp& ti) // 新增：适配 Accept 返回 {fd,peer} 结构体
 {
-    sockaddr_in peer;
-    std::vector<int> connfds;
-	accepsock_.Accept(peer,connfds);
-	if(!connfds.empty())
+    std::vector<AcceptedConn> conns;
+	accepsock_.Accept(conns);
+	if(!conns.empty())
     {
         if(newConnctionCallback_)
-        {	for(int connfd:connfds)
-				newConnctionCallback_(connfd,peer);
+        {
+            for (auto& c : conns)
+                newConnctionCallback_(c.fd, c.peer);
         }
         else
         {
             Logmanage(ERR,"accepor newcallback empty");
-            for(int connfd:connfds) close(connfd);
+            for (auto& c : conns) close(c.fd);
         }
     }
 }

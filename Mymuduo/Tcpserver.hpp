@@ -5,6 +5,7 @@
 #include"Callback.hpp"
 
 #include <atomic>
+#include <cstdint> // 新增：支持 uint16_t 端口参数
 #include <functional>
 #include<memory>
 #include <netinet/in.h>
@@ -19,7 +20,7 @@ class Tcpserver
 {
     using ThreadInitCallback=std::function<void(EventLoop*)>;
 public:
-	explicit Tcpserver(EventLoop* loop);
+	explicit Tcpserver(EventLoop* loop, uint16_t port = 8081); // 新增：端口参数（向下透传 Acceptor）
     ~Tcpserver();
     void SetConntionCallback(ConntionCallback&& cb){conntionCallback_=std::move(cb);}
     void SetMessageCallback( MessageCallback&& cb){messageCallback_=std::move(cb);}

@@ -81,10 +81,16 @@ void TcpConnction::handleRead(TimeStamp ti)
             if (businessPool_)
             {
                 TcpConnctionptr self = shared_from_this();
-                businessPool_->enqueue([self, spBuf, ti]()
+                // enqueue返回false代表队列满，限流拒绝
+                bool ok = businessPool_->enqueue([self, spBuf, ti]()
                 {
                     self->messageCallback_(self, spBuf.get(), ti);
                 });
+                if (!ok)
+                {
+                    // 队列满，业务线程处理不过来，这条消息直接丢弃并打日志
+                    Logmanage(ERR, "business pool full, drop msg from conn:%s", name_.c_str());
+                }
             }
             else
             {
@@ -120,9 +126,14 @@ void TcpConnction::send(const std::string& msg)
         else//不是一个线程下给该loop线程任务队列
         {
             // 注意：这里把 msg 拷贝成独立 string 捕获，避免悬垂指针
+            // 新增：修复悬垂指针：原实现 std::bind 只捕获 spMsg->data() 裸指针、
+            // 未持有 shared_ptr，spMsg 析构后指针失效，IO 线程 sendloop 读到已复用内存（实测响应头
+            // 出现垃圾字节 0x02801dff）。改为 lambda 捕获 shared_ptr，保证字符串与连接生命周期延续。
             auto spMsg = std::make_shared<std::string>(msg);
-            loop_->queueInLoop(std::bind(&TcpConnction::sendloop,shared_from_this(),
-                                         spMsg->data(), spMsg->size()));
+            loop_->queueInLoop([self = shared_from_this(), spMsg]()
+            {
+                self->sendloop(spMsg->data(), static_cast<int>(spMsg->size()));
+            });
         }
     }
 }
