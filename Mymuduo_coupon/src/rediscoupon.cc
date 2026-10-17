@@ -155,6 +155,17 @@ void CouponRedis::claimRollback(int64_t couponId, int64_t userId)
     if (r2) freeReplyObject(r2);
 }
 
+void CouponRedis::claimRollbackStock(int64_t couponId)
+{
+    // 新增：只回补库存，保留 claimed 集合（见头文件说明）
+    redisContext* c = ctx();
+    if (!c) return;
+
+    std::string stockKey = "coupon:stock:" + std::to_string(couponId);
+    redisReply* r = (redisReply*)redisCommand(c, "INCR %s", stockKey.c_str());
+    if (r) freeReplyObject(r);
+}
+
 bool CouponRedis::initStock(int64_t couponId, int total)
 {
     redisContext* c = ctx();

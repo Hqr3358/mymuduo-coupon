@@ -45,6 +45,14 @@ public:
     void claimRollback(int64_t couponId, int64_t userId);
 
     /**
+     * @brief 新增：仅回补库存（INCR），不操作 claimed 集合。
+     *   用于 MySQL 唯一索引冲突（用户 DB 已有领取记录）时：保持
+     *   claimed 集合含该用户（保证后续走 duplicate 路径），只把
+     *   Lua 预扣的库存补回。
+     */
+    void claimRollbackStock(int64_t couponId);
+
+    /**
      * @brief 发券初始化库存
      */
     bool initStock(int64_t couponId, int total);

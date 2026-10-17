@@ -189,6 +189,18 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
     ResultSet rs;
     if (!mc.execute(insertSql, &rs))
     {
+        // 新增：区分"唯一索引冲突(ER_DUP_ENTRY=1062)"与一般 DB 错误：
+        //   - 1062：DB 已存在该用户领取记录（如 Redis 数据丢失后状态修复），
+        //     说明用户实际已领到过该券 → 保持 claimed 集合（用户已在其中，
+        //     后续请求在 Redis 层直接返回 duplicate），仅回补本次预扣的库存，
+        //     按"重复领取"幂等返回，避免 SREM 移除集合后反复打 DB；
+        //   - 其他错误：完整回滚 Redis 预扣（库存 + claimed 集合）。
+        if (mc.lastErrno() == 1062)
+        {
+            redis_.claimRollbackStock(couponId);
+            sendResp(conn, MSG_CLAIM, ERR_DUP_CLAIM, "already claimed (db unique index)");
+            return;
+        }
         // 唯一索引冲突（用户已领过）或其他 DB 错误：回滚 Redis 预扣
         redis_.claimRollback(couponId, userId);
         sendResp(conn, MSG_CLAIM, ERR_DB, "insert user_coupon failed, rolled back");
