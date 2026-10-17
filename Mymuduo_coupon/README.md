@@ -141,27 +141,29 @@ Mymuduo_coupon/
                            #   stress/dup/stress-mix）
 ```
 
-## 编译运行
+## 编译运行（推荐整体构建，一个工程一次构建）
 
 ```bash
 # 0) 依赖：MySQL 8.x、Redis、libmysqlclient、libhiredis、nlohmann-json
 sudo apt-get install -y mysql-server redis-server libhiredis-dev nlohmann-json3-dev libmysqlclient-dev
 
-# 1) 先编译自研库（仓库内置，位于本工程上级目录 ../Mymuduo）
-cd ../Mymuduo/build && cmake .. && make -j4
+# 1) 整体构建：在仓库根目录一次 cmake + make，
+#    自研muduo网络库(../Mymuduo) + Redis + MySQL + 优惠券业务 全部编译
+cd .. && mkdir -p build && cd build && cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=ON .. && make -j4
+#    产物：../Mymuduo/lib/libmymuduo.so、./Mymuduo_coupon/couponserver、couponclient
 
 # 2) 初始化数据库（建库 + 17 张表 + 账号 coupon/coupon123）
-mysql -uroot < sql/init.sql
+mysql -uroot < ../Mymuduo_coupon/sql/init.sql
 
-# 3) 编译并启动优惠券服务器（支持参数：./couponserver [port] [businessThreads]，默认 9081 / 8）
-mkdir -p build && cd build && cmake .. && make -j4
-LD_LIBRARY_PATH=../Mymuduo/lib ./couponserver 9081 8
+# 3) 启动优惠券服务器（支持参数：./couponserver [port] [businessThreads]，默认 9081 / 8）
+cd ../Mymuduo_coupon
+LD_LIBRARY_PATH=../Mymuduo/lib ../build/Mymuduo_coupon/couponserver 9081 8
 
-# 4) 压测/演示
-./couponclient issue "秒杀券" 50              # 发券
-./couponclient stress <coupon_id> 300 16     # 300 并发领 50 张 → 恰 50 成功
-./couponclient dup <coupon_id> <user> 100    # 同用户并发 100 次 → 1 成功 99 重复
-./couponclient stress-mix <coupon_id> 50 8   # 领券+双核销 → 核销幂等
+# 4) 压测/演示（客户端在整体构建产物目录 build/Mymuduo_coupon/ 下）
+../build/Mymuduo_coupon/couponclient issue "秒杀券" 50              # 发券
+../build/Mymuduo_coupon/couponclient stress <coupon_id> 300 16     # 300 并发领 50 张 → 恰 50 成功
+../build/Mymuduo_coupon/couponclient dup <coupon_id> <user> 100    # 同用户并发 100 次 → 1 成功 99 重复
+../build/Mymuduo_coupon/couponclient stress-mix <coupon_id> 50 8   # 领券+双核销 → 核销幂等
 ```
 
 ## 优惠券工程优化记录

@@ -10,15 +10,21 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g -Wall -Wextra -pthread")
 # ---- 自研 muduo 网络库（头文件目录 + 已编译的动态库）----
 # 优化：默认优先取仓库内置的 ../Mymuduo（网络库已并入本仓库），
 # 兼容外部独立仓库 ../mymudo；也可用 -DMYMUDUO_DIR=/path/to/xxx 覆盖。
+# 注意：用 CMAKE_CURRENT_SOURCE_DIR 定位，保证"根级整体构建(add_subdirectory)"
+# 与"单独进入本目录构建"两种方式都能正确找到仓库内 ../Mymuduo。
 if(NOT DEFINED MYMUDUO_DIR)
-    if(EXISTS ${CMAKE_SOURCE_DIR}/../Mymuduo)
-        set(MYMUDUO_DIR ${CMAKE_SOURCE_DIR}/../Mymuduo)
+    if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../Mymuduo)
+        set(MYMUDUO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../Mymuduo)
     else()
-        set(MYMUDUO_DIR ${CMAKE_SOURCE_DIR}/../mymudo)
+        set(MYMUDUO_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../mymudo)
     endif()
 endif()
 include_directories(${MYMUDUO_DIR})
-link_directories(${MYMUDUO_DIR}/lib)
+# 优化：整体构建时 mymuduo 是同一构建树内的 add_subdirectory 目标，CMake 直接链接；
+# 独立构建时回退到动态库路径（两场景兼容）。
+if(NOT TARGET mymuduo)
+    link_directories(${MYMUDUO_DIR}/lib)
+endif()
 
 # ---- 系统依赖 ----
 include_directories(/usr/include/mysql /usr/include/hiredis /usr/include/nlohmann)
