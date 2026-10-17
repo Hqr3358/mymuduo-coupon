@@ -10,7 +10,6 @@ class TimeStamp
 {
 public:
 	TimeStamp():timer_(time(nullptr)){}
-/** @brief 返回格式化时间字符串（YYYY-MM-DD HH:MM:SS） */
 	std::string to_string() const//返回具体时间
     {
         char buff[128];
@@ -25,7 +24,6 @@ public:
     	,time->tm_sec);
         return buff;
     }
-/** @brief 返回当前 Unix 时间戳 */
     static time_t now()//返回当前时间戳
     {
 		return time(NULL);

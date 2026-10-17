@@ -6,7 +6,6 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
-/** @brief 监听 socket（backlog 可配） */
 void Socket::Listen()
 {
 	if(listen(sockfd_, 1024)<0)
@@ -58,25 +57,21 @@ void Socket::BindAddress(uint16_t port)
         Logmanage(FATAL,"bind fali");
     }
 }
-/** @brief 设置 TCP_NODELAY（关闭 Nagle，降低小包延迟） */
 void Socket::SetTcpNoDelay(bool on)
 {
     int optval=on?1:0;
     setsockopt(sockfd_,IPPROTO_TCP,TCP_NODELAY,&optval,sizeof(optval));
 }
-/** @brief 设置 SO_REUSEADDR（端口快速重用） */
 void Socket::SetReuseAddr(bool on)
 {
     int optval=on?1:0;
     setsockopt(sockfd_,SOL_SOCKET,SO_REUSEADDR,&optval,sizeof(optval));
 }
-/** @brief 设置 SO_REUSEPORT */
 void Socket::SetReusePort(bool on)
 {
     int optval=on?1:0;
     setsockopt(sockfd_,SOL_SOCKET,SO_REUSEPORT,&optval,sizeof(optval));
 }
-/** @brief 设置 SO_KEEPALIVE（探测死连接） */
 void Socket::SetKeepAlive(bool on)
 {
     int optval=on?1:0;

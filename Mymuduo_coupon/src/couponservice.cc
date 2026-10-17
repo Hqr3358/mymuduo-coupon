@@ -15,8 +15,6 @@ static constexpr int kMaxUseRetry = 3;
 
 // ==================== 单例 ====================
 
-/**
- * @brief 单例入口：返回全局唯一 CouponService（懒加载，进程内单实例）
  */
 CouponService* CouponService::init()
 {
@@ -24,10 +22,6 @@ CouponService* CouponService::init()
     return &svc;
 }
 
-/**
- * @brief 构造函数：初始化 MySQL 连接池与 Redis，并注册 msgid -> Handler 映射
- * @details ready_ 标识服务可用性；MySQL/Redis 任一初始化失败则置为不可用，
- *          由服务端启动时退出（见 main.cc）。
  */
 CouponService::CouponService()
     : mysql_("127.0.0.1", 3306, "coupon", "coupon123", "coupon_db", 8)
@@ -59,10 +53,6 @@ CouponService::CouponService()
     }
 }
 
-/**
- * @brief 【功能】消息分发：按 msgid 路由到已注册的业务 Handler
- * @details 构造函数在 services_ 注册表绑定 MSG_PING/ISSUE/CLAIM/USE/
- *          QUERY_MINE/QUERY；未知 msgid 或参数非法直接回 ERR_ARGS。
  */
 void CouponService::dispatch(const TcpConnctionptr& conn, const json& js)
 {
@@ -84,22 +74,12 @@ void CouponService::dispatch(const TcpConnctionptr& conn, const json& js)
 
 // ==================== 业务处理 ====================
 
-/**
- * @brief 【功能】心跳探测：验证客户端与服务端连通性
- * @details 对应功能测试第 1 项「ping 连接」，返回 errno=0 + pong。
  */
 void CouponService::onPing(const TcpConnctionptr& conn, const json& /*js*/)
 {
     sendResp(conn, MSG_PING, ERR_OK, "pong", {{"pong", true}});
 }
 
-/**
- * @brief 【功能】发券：创建券模板 + 初始化 Redis 库存
- * @details 将 title/total/起止时间写入 coupon 表（status=1），用 lastInsertId
- *          拿到新券 ID，再调用 redis_.initStock() 初始化 coupon:stock:{id}
- *          库存——这是后续防超发压测的库存来源。
- * @param conn 客户端连接（用于回包）
- * @param js   请求体：title、total，可选 start_time/end_time
  */
 void CouponService::onIssue(const TcpConnctionptr& conn, const json& js)
 {
@@ -140,19 +120,6 @@ void CouponService::onIssue(const TcpConnctionptr& conn, const json& js)
              {{"coupon_id", couponId}, {"total", total}});
 }
 
-/**
- * @brief 【功能】领券：Redis Lua 原子防超发 + 领取去重 + MySQL 唯一索引兜底
- * @details 核心一致性链路（对应功能测试第 2/3/12 项）：
- *   ① 校验券存在、上架、未过期；
- *   ② CouponRedis::claimTry 执行 Lua 脚本（claim_coupon.lua）原子完成
- *      「库存检查 → DECR → 领取集合 SADD」，Redis 单线程执行脚本无竞态，
- *      同时解决防超发与防重复领取；
- *   ③ 生成券码写对应分表；落库失败按错误分类处理：
- *      - 1062 唯一索引冲突：用户 DB 已有领取记录 → 仅回补预扣库存，
- *        幂等返回 ERR_DUP_CLAIM（避免 SREM 后反复打 DB）；
- *      - 其他 DB 错误：完整回滚 Redis 预扣（INCR 库存 + SREM 用户）。
- * @param conn 客户端连接（用于回包）
- * @param js   请求体：coupon_id、user_id
  */
 void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
 {
@@ -253,17 +220,6 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
               {"coupon_code", code}, {"remain", remain}, {"title", title}});
 }
 
-/**
- * @brief 【功能】核销：版本号乐观锁 + Redis 已核销缓存双保险幂等
- * @details 对应功能测试第 4/5/6/13/14 项（核销、核销幂等、无效券码、TTL、version）：
- *   ① 快速幂等：缓存命中 coupon:used:{code}（7 天 TTL）直接返回已核销；
- *   ② 版本号乐观锁：先 SELECT 读 status/version，再执行
- *      「SET status=1, version=version+1 WHERE status=0 AND version=读到的值」，
- *      受影响行数为 0 说明并发冲突（版本号或状态被改），重新读取重试
- *      （最多 kMaxUseRetry 次），杜绝重复核销；
- *   ③ 成功写 coupon:used:{code} 缓存（7 天 TTL）加速后续幂等判定。
- * @param conn 客户端连接（用于回包）
- * @param js   请求体：user_id、coupon_code
  */
 void CouponService::onUse(const TcpConnctionptr& conn, const json& js)
 {
@@ -342,13 +298,6 @@ void CouponService::onUse(const TcpConnctionptr& conn, const json& js)
     sendResp(conn, MSG_USE, ERR_SYSTEM, "use conflict, retry later");
 }
 
-/**
- * @brief 【功能】查询我的券：按 user_id 路由到唯一分表查询
- * @details 对应功能测试第 8 项「分表路由」：user_id % kShardCount 定位
- *          单张分表（查询亲和、只查一张表），JOIN 券模板表取标题，
- *          按领取时间倒序返回最近 100 条。
- * @param conn 客户端连接（用于回包）
- * @param js   请求体：user_id
  */
 void CouponService::onQueryMine(const TcpConnctionptr& conn, const json& js)
 {
@@ -391,13 +340,6 @@ void CouponService::onQueryMine(const TcpConnctionptr& conn, const json& js)
     sendResp(conn, MSG_QUERY_MINE, ERR_OK, "ok", {{"count", list.size()}, {"coupons", list}});
 }
 
-/**
- * @brief 【功能】查询券模板详情（含 Redis 实时剩余库存）
- * @details 券模板元数据（标题/总量/起止时间/状态）查 coupon 表，
- *          剩余库存实时读 coupon:stock:{id}（无 key 返回 -1），
- *          用于验证「Redis 库存与 DB 发放量一致性」。
- * @param conn 客户端连接（用于回包）
- * @param js   请求体：coupon_id
  */
 void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
 {
@@ -438,8 +380,6 @@ void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
 
 // ==================== 工具 ====================
 
-/**
- * @brief 统一响应回包：封装 msgid/errno/msg/data 并经 conn->send 下发
  */
 void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
                              const std::string& msg, const json& data)
@@ -455,8 +395,6 @@ void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
     conn->send(out); // send 线程安全：跨线程时自动 queueInLoop 到 IO 线程
 }
 
-/**
- * @brief 生成全局唯一券码：C{couponId}-{userId}-{16位随机hex}，配合 uk_code 唯一索引
  */
 std::string CouponService::genCode(int64_t couponId, int64_t userId)
 {
@@ -468,8 +406,6 @@ std::string CouponService::genCode(int64_t couponId, int64_t userId)
     return buf;
 }
 
-/**
- * @brief 当前时间字符串（YYYY-MM-DD HH:MM:SS）
  */
 std::string CouponService::nowStr()
 {
@@ -481,8 +417,6 @@ std::string CouponService::nowStr()
     return buf;
 }
 
-/**
- * @brief 未来时间字符串：当前时间 + days 天（券模板有效期计算）
  */
 std::string CouponService::futureStr(int days)
 {
@@ -494,10 +428,6 @@ std::string CouponService::futureStr(int days)
     return buf;
 }
 
-/**
- * @brief 【功能】启动定时清理线程（后台守护）
- * @details 对应功能测试第 15 项「定时清理」：每 kCleanIntervalSec(60) 秒
- *          执行一轮 cleanExpired；cleanerRunning_.exchange(true) 保证幂等。
  */
 void CouponService::startCleaner()
 {
@@ -519,14 +449,6 @@ void CouponService::startCleaner()
                            });
 }
 
-/**
- * @brief 【功能】单轮定时清理：过期券下架 + Redis 缓存清理 + 分表过期标记
- * @details 对应功能测试第 15 项：
- *   ① 找出「已上架且已过期」的券，coupon.status 1->0 下架（带 status=1
- *      条件，幂等防重复下架）；
- *   ② 删除该券 Redis stock/claimed 缓存（防残留 key 泄漏内存）；
- *   ③ 将该券在各分表中「未核销(status=0)」的记录标记为已过期(status=2)，
- *      已核销(status=1)保持不动。
  */
 void CouponService::cleanExpired()
 {

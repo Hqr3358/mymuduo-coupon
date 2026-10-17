@@ -1,7 +1,6 @@
 #include "BusinessThreadPool.hpp"
 #include "log.hpp"
 
-/** @brief 构造业务线程池：保存线程数与队列上限 */
 BusinessThreadPool::BusinessThreadPool(int numThreads, size_t maxQueueSize)
     : numThreads_(numThreads)
     // 初始化队列上限
@@ -10,13 +9,11 @@ BusinessThreadPool::BusinessThreadPool(int numThreads, size_t maxQueueSize)
 {
 }
 
-/** @brief 析构：确保线程池已停止（未停止则先 stop） */
 BusinessThreadPool::~BusinessThreadPool()
 {
     stop();
 }
 
-/** @brief 启动 numThreads 个业务线程（workerLoop） */
 void BusinessThreadPool::start()
 {
     running_ = true;
@@ -29,7 +26,6 @@ void BusinessThreadPool::start()
               numThreads_, maxQueueSize_);
 }
 
-/** @brief 停止：置停止标志并唤醒全部线程，join 回收 */
 void BusinessThreadPool::stop()
 {
     running_ = false;
@@ -45,7 +41,6 @@ void BusinessThreadPool::stop()
 }
 
 // 入队加限流：队列满直接拒绝，不阻塞IO线程
-/** @brief 投递任务：队列满则等待，停止后拒绝（返回 false） */
 bool BusinessThreadPool::enqueue(Task task)
 {
     {
@@ -64,14 +59,12 @@ bool BusinessThreadPool::enqueue(Task task)
 }
 
 // 返回当前队列积压数，给定时器/监控用
-/** @brief 获取当前队列积压任务数 */
 size_t BusinessThreadPool::getQueueSize()
 {
     std::lock_guard<std::mutex> lock(mtx_);
     return taskQueue_.size();
 }
 
-/** @brief 工作线程循环：取任务执行，停止且队列空时退出 */
 void BusinessThreadPool::workerLoop()
 {
     while (running_)

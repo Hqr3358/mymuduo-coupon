@@ -9,7 +9,6 @@ class Buffer
     static const size_t kCheapPrePend=8;
     static const size_t kInitialSize=1024;
 public:
-/** @brief 构造缓冲：预留 kCheapPrePend 前部空间 */
 	Buffer(size_t InitialSize=kInitialSize);
     ~Buffer(){}
     size_t writeableBytes() const//可写入区域长度
@@ -28,21 +27,13 @@ public:
     {
         return begin()+readerIndex_;
     }
-/** @brief 取出 len 字节（移动读指针） */
 	void retrieve(size_t len);//将buffer里读取了len长度的可读数据去掉
-/** @brief 重置全部读指针 */
     void retrieveAll();//将buffer里全部可读数据去掉
-/** @brief 取出全部未读数据为字符串 */
     std::string retrieveAllAsString();//将buffer里全部可读数据char变成string并读取出来
-/** @brief 取出 len 字节为字符串 */
     std::string retrieveAsString(size_t len);//将buffer里len长度可读数据char变成string并读取出来
-/** @brief 保证写区可写字节数（不够则扩容） */
     void enSurewriteableBytes(size_t len);//判断可写入长度或者前移后是否够len长，不够就扩容
-/** @brief 追加写数据到写区（不够自动扩容） */
     void append(const char* data,size_t len);//将data，data＋len区域拷贝到写入区域，不够就扩容
-/** @brief 从 fd 读入缓冲（一次读满），返回读取字节数 */
     ssize_t readFd(int fd,int* saveErrno);//提取fd获得的数据
-/** @brief 写出缓冲内容到 fd，返回写出字节数 */
     ssize_t writeFd(int fd,int* saveErrno);
 private:
 	char* begin()

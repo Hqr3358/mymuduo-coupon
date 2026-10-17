@@ -3,8 +3,6 @@
 #include "TcpConnnction.hpp"
 #include "log.hpp"
 
-/**
- * @brief 构造服务端：绑定连接/消息回调到自研 TcpServer
  */
 CouponServer::CouponServer(EventLoop* loop, uint16_t port)
     : server_(loop, port), loop_(loop)
@@ -14,24 +12,18 @@ CouponServer::CouponServer(EventLoop* loop, uint16_t port)
                                          std::placeholders::_2, std::placeholders::_3));
 }
 
-/**
- * @brief 设置业务线程池线程数（透传 TcpServer，业务回调在该池执行）
  */
 void CouponServer::SetBusinessThreadNum(int n)
 {
     server_.SetBusinessThreadNum(n);
 }
 
-/**
- * @brief 设置 IO 线程数（透传 TcpServer）
  */
 void CouponServer::SetThreadnum(int n)
 {
     server_.SetThreadnum(n);
 }
 
-/**
- * @brief 启动服务：校验 CouponService 就绪后启动定时清理线程并开始监听
  */
 void CouponServer::start()
 {
@@ -47,11 +39,6 @@ void CouponServer::start()
     server_.start();
 }
 
-/**
- * @brief 【功能】连接建立/断开回调：维护每连接的粘包解码器（codec）
- * @details 连接建立时为该连接创建 Codec（feed 式解码），断开时清理；
- *          业务回调在业务线程池线程执行，conn 以 shared_ptr 拷贝持有，
- *          生命周期安全（对应日志 conn established/closed）。
  */
 void CouponServer::onConnection(const TcpConnctionptr& conn)
 {
@@ -88,11 +75,6 @@ void CouponServer::onConnection(const TcpConnctionptr& conn)
     }
 }
 
-/**
- * @brief 【功能】消息回调：把原始字节喂给粘包解码器，解码后分发到业务层
- * @details 该回调在业务线程池线程执行（TcpServer 分发），buf 是本次 read
- *          的独立拷贝；Codec 完成帧拆分 + JSON 解析后调用
- *          CouponService::dispatch（msgid 注册表路由）。
  */
 void CouponServer::onMessage(const TcpConnctionptr& conn, Buffer* buf, TimeStamp /*ts*/)
 {

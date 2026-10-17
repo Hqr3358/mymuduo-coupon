@@ -1,4 +1,3 @@
-/** @brief 回调类型定义：连接/关闭/消息回调 + TcpConnctionptr（网络库各组件间解耦） */
 #pragma once
 //#include "TcpConnnction.hpp"
 #include<functional>

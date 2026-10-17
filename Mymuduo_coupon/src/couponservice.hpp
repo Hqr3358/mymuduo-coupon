@@ -11,18 +11,6 @@
 
 using json = nlohmann::json;
 
-/**
- * @file couponservice.hpp
- * @brief 优惠券业务服务（仿 Mymuduo_chat 的 chatservice：单例 + msgid 注册表）
- *
- * 线程模型：消息回调在库的业务线程池线程中执行，本类的方法会被多个
- * 业务线程并发调用。MysqlPool（连接池 + RAII）与 CouponRedis
- * （thread_local 连接 + Lua 原子脚本）均为并发安全设计，无需额外加锁。
- *
- * 一致性设计：
- *   领券  = Redis Lua（DECR 库存 + SADD 去重，原子） + MySQL 唯一索引兜底
- *          MySQL 落库失败时回滚 Redis 预扣（INCR + SREM 补偿）
- *   核销  = MySQL 原子 UPDATE（受影响行数判定，天然幂等） + Redis 快速缓存
  */
 class CouponService
 {
@@ -47,28 +35,16 @@ private:
     CouponService();
 
     // ---- 业务处理（实现见 couponservice.cc，均有功能级 @brief 注释）----
-    /**
-     * @brief 【功能】心跳探测（ping 连接）
      */
     void onPing(const TcpConnctionptr& conn, const json& js);
-    /**
-     * @brief 【功能】发券：券模板入库 + Redis 库存初始化
      */
     void onIssue(const TcpConnctionptr& conn, const json& js);
-    /**
-     * @brief 【功能】领券：Redis Lua 原子防超发/去重 + MySQL 唯一索引兜底（含 1062 幂等回补）
      */
     void onClaim(const TcpConnctionptr& conn, const json& js);
-    /**
-     * @brief 【功能】核销：版本号乐观锁（version 条件更新+冲突重试）+ Redis 已核销缓存双保险幂等
      */
     void onUse(const TcpConnctionptr& conn, const json& js);
-    /**
-     * @brief 【功能】查询我的券：user_id % 5 路由单分表查询
      */
     void onQueryMine(const TcpConnctionptr& conn, const json& js);
-    /**
-     * @brief 【功能】查询券模板详情（含 Redis 实时库存）
      */
     void onQuery(const TcpConnctionptr& conn, const json& js);
 

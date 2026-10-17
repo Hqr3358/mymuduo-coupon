@@ -6,12 +6,10 @@
 #include <cstring>
 #include <sys/epoll.h>
 #include<unistd.h>
-/** @brief 析构：关闭 epoll fd */
 Eventepoller::~Eventepoller()
 {
 	close(efd_);
 }
-/** @brief 【功能】epoll 等待就绪事件并填充 active 列表（事件循环核心） */
 TimeStamp Eventepoller::poll(int timeout,ChannelList* activechannels)
 {
     TimeStamp now;
@@ -38,7 +36,6 @@ TimeStamp Eventepoller::poll(int timeout,ChannelList* activechannels)
     }
     return now;
 }
-/** @brief 从 epoll 移除 Channel */
 void Eventepoller::removeChannel(Channel* channel)
 {
     int index=channel->index();
@@ -49,7 +46,6 @@ void Eventepoller::removeChannel(Channel* channel)
         channel->Setindex(kDeleted);
     }
 }
-/** @brief 更新 Channel 的 epoll 监听（ADD/MOD） */
 void Eventepoller::updateChannel(Channel* channel)
 {
     int index=channel->index();
@@ -65,7 +61,6 @@ void Eventepoller::updateChannel(Channel* channel)
     }
 }    
 
-/** @brief 把就绪事件映射回 Channel 并加入 active 列表 */
 void Eventepoller::fillActiveChannels(int numevents,ChannelList* activechannels)
 {
     for(int i=0;i<numevents;i++)
@@ -75,7 +70,6 @@ void Eventepoller::fillActiveChannels(int numevents,ChannelList* activechannels)
         activechannels->push_back(channel);
     }
 }
-/** @brief 底层 epoll_ctl 封装（EPOLL_CTL_ADD/MOD/DEL） */
 void Eventepoller::update(uint32_t option,Channel* channel)
 {
     int fd=channel->fd();

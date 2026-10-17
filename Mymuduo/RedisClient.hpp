@@ -20,9 +20,7 @@
 class RedisClient
 {
 public:
-/** @brief 构造：初始化连接状态 */
     RedisClient();
-/** @brief 析构：释放 Redis 连接 */
     ~RedisClient();
 
     RedisClient(const RedisClient&) = delete;
@@ -32,7 +30,6 @@ public:
      * @brief 新增：连接 Redis（默认 127.0.0.1:6379），成功返回 true
      */
     bool connect(const std::string& host = "127.0.0.1", int port = 6379);
-/** @brief 断开并释放连接 */
     void disconnect();
 
     /**

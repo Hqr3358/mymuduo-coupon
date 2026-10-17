@@ -4,14 +4,10 @@
 
 // ==================== ResultSet ====================
 
-/**
- * @brief 构造空结果集对象（数据由 fill() 从 MYSQL_RES 填充）
  */
 ResultSet::ResultSet() {}
 ResultSet::~ResultSet() {}
 
-/**
- * @brief 填充结果集：解析 mysql_store_result 的行列数据，并释放 MYSQL_RES
  */
 void ResultSet::fill(MYSQL_RES* res)
 {
@@ -40,8 +36,6 @@ void ResultSet::fill(MYSQL_RES* res)
     mysql_free_result(res);
 }
 
-/**
- * @brief 按 (行, 列) 索引取值，越界返回空串
  */
 std::string ResultSet::get(size_t row, size_t col) const
 {
@@ -49,8 +43,6 @@ std::string ResultSet::get(size_t row, size_t col) const
     return data_[row][col];
 }
 
-/**
- * @brief 按 (行, 列名) 取值，列名不存在返回空串
  */
 std::string ResultSet::get(size_t row, const std::string& colName) const
 {
@@ -64,8 +56,6 @@ std::string ResultSet::get(size_t row, const std::string& colName) const
 
 // ==================== MysqlPool ====================
 
-/**
- * @brief 构造连接池：仅保存连接参数，实际连接在 init() 建立
  */
 MysqlPool::MysqlPool(const std::string& host, int port,
                      const std::string& user, const std::string& passwd,
@@ -74,8 +64,6 @@ MysqlPool::MysqlPool(const std::string& host, int port,
 {
 }
 
-/**
- * @brief 析构：关闭连接池全部空闲连接
  */
 MysqlPool::~MysqlPool()
 {
@@ -86,9 +74,6 @@ MysqlPool::~MysqlPool()
     idle_.clear();
 }
 
-/**
- * @brief 初始化连接池：建立 poolSize 条 MySQL 连接入空闲队列
- * @details 对应功能测试第 11 项连接池等待：预建连接避免并发时反复建连。
  */
 bool MysqlPool::init()
 {
@@ -110,8 +95,6 @@ bool MysqlPool::init()
     return ok > 0;
 }
 
-/**
- * @brief 连接保活：ping 探测，失效则重连一次并写回新连接指针
  */
 bool MysqlPool::ensureAlive(MYSQL*& conn)
 {
@@ -132,13 +115,6 @@ bool MysqlPool::ensureAlive(MYSQL*& conn)
     return true;
 }
 
-/**
- * @brief 【功能】连接池取连接：空闲队列阻塞等待（条件变量机制）
- * @details 对应功能测试第 11 项「连接池等待」：空闲队列为空时
- *          cv_.wait_for 有限等待 kGetTimeoutMs(3s)，期间有连接归还
- *          （doPut 中 notify_one）即唤醒；超时仍无连接才返回 nullptr，
- *          由业务层走 ERR_DB/重试路径，避免高并发瞬时耗尽连接池时直接失败。
- * @return 空闲 MYSQL* 连接；超时无连接返回 nullptr
  */
 MYSQL* MysqlPool::doGet()
 {
@@ -155,11 +131,6 @@ MYSQL* MysqlPool::doGet()
     return c;
 }
 
-/**
- * @brief 【功能】连接池归还连接：入队并唤醒一个等待线程
- * @details RAII（MysqlConn 析构）调用；notify_one 唤醒 doGet 中
- *          条件变量等待的线程，保证高并发下连接能被及时复用。
- * @param conn 待归还的 MYSQL* 连接
  */
 void MysqlPool::doPut(MYSQL* conn)
 {
@@ -171,17 +142,12 @@ void MysqlPool::doPut(MYSQL* conn)
 
 // ==================== MysqlConn（RAII）====================
 
-/**
- * @brief RAII 连接守卫：构造时从连接池借出连接，析构自动归还
- * @details 对应功能测试第 11 项：借出时 doGet 阻塞等待空闲连接，
- *          异常路径下析构仍归还，保证连接不泄漏。
  */
 MysqlConn::MysqlConn(MysqlPool* pool)
     : pool_(pool), conn_(pool ? pool->doGet() : nullptr)
 {
 }
 
-/** @brief 析构：归还连接池（RAII 借还闭环，异常路径也归还） */
 MysqlConn::~MysqlConn()
 {
     if (pool_ && conn_)
@@ -190,10 +156,6 @@ MysqlConn::~MysqlConn()
     }
 }
 
-/**
- * @brief 执行写/改 SQL（execute/update/insert 等），可选带回结果集
- * @details 对应功能测试第 12 项 1062 兜底：INSERT 触发唯一索引冲突时
- *          MySQL 返回 1062 错误码，由业务层捕获转 ERR_DUP_CLAIM。
  */
 bool MysqlConn::execute(const std::string& sql, ResultSet* rs)
 {
@@ -220,8 +182,6 @@ bool MysqlConn::execute(const std::string& sql, ResultSet* rs)
     return true;
 }
 
-/**
- * @brief 执行查询 SQL（SELECT），结果填充 ResultSet
  */
 bool MysqlConn::query(const std::string& sql, ResultSet* rs)
 {

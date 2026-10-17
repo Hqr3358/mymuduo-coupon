@@ -2,12 +2,6 @@
 #include <cstdint>
 #include <string>
 
-/**
- * @file protocol.hpp
- * @brief 协议层：4 字节大端长度头 + JSON 载荷
- *   [ 4 bytes length ][ payload(JSON) ]
- *   length = payload 字节数，网络字节序（大端），最大 1MB 防恶意包
- *   每个载荷都是一个 JSON 对象，统一携带 "msgid" 字段路由到对应处理器。
  */
 
 // 消息类型（客户端 -> 服务端请求）
@@ -39,15 +33,8 @@ enum ErrCode
 
 static constexpr uint32_t kMaxFrameSize = 1 << 20; // 单包最大 1MB
 
-/**
- * @brief 封包：out 追加 "长度头 + payload"
  */
 void encodeFrame(std::string& out, const std::string& payload);
 
-/**
- * @brief 解包：从 in 中 offset 位置尝试解析一个完整包
- *   成功：返回 true，*payload 为载荷，offset 前进到下一个包起点
- *   数据不足：返回 false，offset 不动
- *   长度非法：返回 false 并置 *bad = true（协议错误，应断开连接）
  */
 bool decodeFrame(const std::string& in, size_t& offset, std::string* payload, bool* bad);

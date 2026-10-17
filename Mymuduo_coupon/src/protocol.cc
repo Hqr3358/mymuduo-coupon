@@ -2,8 +2,6 @@
 #include <arpa/inet.h>
 #include <cstring>
 
-/**
- * @brief 封包：4 字节网络序长度头 + JSON 载荷（对应协议层封包规范）
  */
 void encodeFrame(std::string& out, const std::string& payload)
 {
@@ -12,9 +10,6 @@ void encodeFrame(std::string& out, const std::string& payload)
     out.append(payload);
 }
 
-/**
- * @brief 解包：按长度头切出完整帧；半包返回 false，非法长度置 bad
- * @details 对应连接级分包解码器：处理粘包/半包与协议破坏检测。
  */
 bool decodeFrame(const std::string& in, size_t& offset, std::string* payload, bool* bad)
 {

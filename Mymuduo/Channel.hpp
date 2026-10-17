@@ -23,31 +23,25 @@ public:
     ,revents_(0){}
     ~Channel(){}
 	//调用epoll返回的就绪事件接口
-/** @brief 事件分发：按 revents 调用读/写/关闭/错误回调 */
 	void FunHadler(int fd);
 	//设置对应回调函数
-/** @brief 设置可读事件回调 */
 	void SetrecvCallback(racvCallback&& cb)
     {
         recvCallback_=std::move(cb);
     }
-/** @brief 设置可写事件回调 */
     void SetWriteCallback(EventCallback&& cb)
     {
         WriteCallback_=std::move(cb);
     }
-/** @brief 设置关闭事件回调 */
     void SetCloseCallback(EventCallback&& cb)
     {
         CloseCallback_=std::move(cb);
     }
-/** @brief 设置错误事件回调 */
     void SetErrCallback(EventCallback&& cb)
     {
         ErrCallback_=std::move(cb);
     }
    	//交给上层eventloop让他通知epoll更新
-/** @brief 更新本 Channel 到事件循环（注册/修改监听事件） */
     void update(); 
     //对event赋值并给相应的epoll全是ET模式
     void SetEnableIn()
@@ -81,7 +75,6 @@ public:
         index_=index;
     }
     //该channel不可用了调用上层eventloop在epoll监听中删除
-/** @brief 从事件循环移除本 Channel */
     void remove();
     //epoll返回就绪事件并设置
     void SetRevent(uint32_t revent)
@@ -96,10 +89,8 @@ public:
 	int fd(){return fd_;}
     uint32_t events(){return events_;}
 	int index(){return index_;}
-/** @brief 绑定对象弱引用（延长生命周期，防止回调时对象已析构） */
     void tie(const std::shared_ptr<void>& cb);
 private:
-/** @brief 事件总入口：持弱引用锁保证对象存活后分发 */
 	void HandleEvent(int fd);//调用对应回调函数
 	std::weak_ptr<void> tie_;
     bool tied_;

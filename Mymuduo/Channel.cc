@@ -6,7 +6,6 @@
 #include"EventLoop.hpp"
 #include "TcpConnnction.hpp"
 #include "TimeStamp.hpp"
-/** @brief 更新本 Channel 到事件循环（注册/修改监听事件） */
 void Channel::update()
 {
     if(events_==0)
@@ -14,12 +13,10 @@ void Channel::update()
         loop_->removeChannel(this);
     }else loop_->updateChannel(this);
 }
-/** @brief 从事件循环移除本 Channel */
 void Channel::remove()
 {
     loop_->removeChannel(this);
 }
-/** @brief 事件分发：按 revents 调用读/写/关闭/错误回调 */
 void Channel::FunHadler(int fd)
 {
     if(tied_)
@@ -32,7 +29,6 @@ void Channel::FunHadler(int fd)
     }
     else  HandleEvent(fd);
 }
-/** @brief 事件总入口：持弱引用锁保证对象存活后分发 */
 void Channel::HandleEvent(int fd)
 {
     if(revents_&EPOLLHUP)
@@ -68,7 +64,6 @@ void Channel::HandleEvent(int fd)
         }
     }
 }
-/** @brief 绑定对象弱引用（延长生命周期，防止回调时对象已析构） */
 void Channel::tie(const std::shared_ptr<void>& cb)
 {
     tied_=true;
