@@ -116,3 +116,8 @@ CREATE TABLE IF NOT EXISTS user_coupon_4 (
     KEY idx_claimed_at (claimed_at)
 ) ENGINE = InnoDB COMMENT '用户券分表 4';
 
+-- 4) 创建业务账号 coupon / coupon123（对应 README 初始化步骤：导入本文件即含账号）
+CREATE USER IF NOT EXISTS 'coupon'@'%' IDENTIFIED BY 'coupon123';
+GRANT ALL PRIVILEGES ON coupon_db.* TO 'coupon'@'%';
+FLUSH PRIVILEGES;
+

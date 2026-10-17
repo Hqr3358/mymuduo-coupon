@@ -304,7 +304,7 @@ static void usage()
         << "  couponclient stress <coupon_id> <users> <threads>\n"
         << "  couponclient dup <coupon_id> <user_id> <times>\n"
         << "  couponclient stress-mix <coupon_id> <users> <threads>\n"
-        << "  [host] [port] optional, default 127.0.0.1 8081\n";
+        << "  [host] [port] optional, default 127.0.0.1 9081\n";
 }
 
 int main(int argc, char** argv)
