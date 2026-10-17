@@ -1,4 +1,5 @@
 #include "couponservice.hpp"
+#include "TcpConnnction.hpp"
 #include "log.hpp"
 #include "protocol.hpp"
 

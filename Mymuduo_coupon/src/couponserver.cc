@@ -1,5 +1,6 @@
 #include "couponserver.hpp"
 #include "couponservice.hpp"
+#include "TcpConnnction.hpp"
 #include "log.hpp"
 
 CouponServer::CouponServer(EventLoop* loop, uint16_t port)
