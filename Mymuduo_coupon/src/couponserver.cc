@@ -3,6 +3,9 @@
 #include "TcpConnnction.hpp"
 #include "log.hpp"
 
+/**
+ * @brief 构造服务端：绑定连接/消息回调到自研 TcpServer
+ */
 CouponServer::CouponServer(EventLoop* loop, uint16_t port)
     : server_(loop, port), loop_(loop)
 {
@@ -11,16 +14,25 @@ CouponServer::CouponServer(EventLoop* loop, uint16_t port)
                                          std::placeholders::_2, std::placeholders::_3));
 }
 
+/**
+ * @brief 设置业务线程池线程数（透传 TcpServer，业务回调在该池执行）
+ */
 void CouponServer::SetBusinessThreadNum(int n)
 {
     server_.SetBusinessThreadNum(n);
 }
 
+/**
+ * @brief 设置 IO 线程数（透传 TcpServer）
+ */
 void CouponServer::SetThreadnum(int n)
 {
     server_.SetThreadnum(n);
 }
 
+/**
+ * @brief 启动服务：校验 CouponService 就绪后启动定时清理线程并开始监听
+ */
 void CouponServer::start()
 {
     CouponService* svc = CouponService::init();

@@ -3,12 +3,14 @@
 #include <cstdio>
 #include <cstring>
 
+/** @brief 构造：初始化连接状态 */
 RedisClient::RedisClient()
     : ctx_(nullptr)
     , key_("conn:last:active")
 {
 }
 
+/** @brief 析构：释放 Redis 连接 */
 RedisClient::~RedisClient()
 {
     disconnect();

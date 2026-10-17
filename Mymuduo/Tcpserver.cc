@@ -37,6 +37,7 @@ baseloop_(loop)
     std::placeholders::_1,std::placeholders::_2));
     timer_->SettimeoutCallback(std::bind(&Tcpserver::handleTimeout,this));
 }
+/** @brief 析构：清理全部连接 */
 Tcpserver::~Tcpserver()
 {
 	for(auto& conntion:connctions_)
@@ -47,19 +48,23 @@ Tcpserver::~Tcpserver()
     }
     businessPool_->stop();
 }
+/** @brief 设置 IO 线程数（EventLoopThreadPool） */
 void Tcpserver::SetThreadnum(int threadnum)
 {
     threadpool_->Setnumthread(threadnum);
 }
+/** @brief 设置业务线程池线程数（业务回调执行线程） */
 void Tcpserver::SetBusinessThreadNum(int num)
 {
     businessThreadNum_ = num;
     businessPool_.reset(new BusinessThreadPool(num));
 }
+/** @brief 设置超时轮询周期（秒），驱动 handleTimeout 周期执行 */
 void Tcpserver::updatetimeoutPolling(int timeout)
 {
 	baseloop_->runInLoop(std::bind(&Timer::updatetimeoutPolling,timer_.get(),timeout));
 }
+/** @brief 启动服务：监听 + 启动线程池 + 启动超时定时器 */
 void Tcpserver::start()
 {
     if(started_++==0)//防止多次start
@@ -75,10 +80,12 @@ void Tcpserver::start()
         baseloop_->runInLoop(std::bind(&Acceptor::listen,acceptor_.get()));
     }
 }
+/** @brief 移除连接：线程安全封装（跨线程转 queueInLoop） */
 void Tcpserver::removeConnction(const TcpConnctionptr& conn)
 {
     baseloop_->runInLoop(std::bind(&Tcpserver::removeInloopConnction,this,conn));
 }
+/** @brief IO 线程内移除连接（从 Map 删除并销毁） */
 void Tcpserver::removeInloopConnction(const TcpConnctionptr& conn)
 {
     Logmanage(NORMOL,"conntion name:%s,fail",conn->name().c_str());
@@ -87,6 +94,7 @@ void Tcpserver::removeInloopConnction(const TcpConnctionptr& conn)
     connctions_.erase(conn->name());
    	conntionCallback_(conn);
 }
+/** @brief 【功能】超时清理：查询 Redis 超时连接并主动断开 */
 void Tcpserver::handleTimeout()
 {
     // 从 Redis ZSET 取出超时未活跃的连接名列表
@@ -120,6 +128,7 @@ void Tcpserver::handleTimeout()
         removeConnction(conn);
     }
 }
+/** @brief 新连接处理：建 TcpConnction、注册回调、加入 Map */
 void Tcpserver::NewConnction(int connfd,const sockaddr_in& peer)
 {
     EventLoop* ioloop=threadpool_->getNextLoop();

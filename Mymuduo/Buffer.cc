@@ -5,11 +5,13 @@
 #include <sys/types.h>
 #include <sys/uio.h>
 #include <unistd.h>
+/** @brief 构造缓冲：预留 kCheapPrePend 前部空间（读/写指针位于其后） */
 Buffer::Buffer(size_t InitialSize):
 buffer_(kCheapPrePend+InitialSize)
 ,readerIndex_(kCheapPrePend)
 ,writerIndex_(kCheapPrePend)
 {}
+/** @brief 取出 len 字节（移动读指针） */
 void Buffer::retrieve(size_t len)
 {
 	if(len<readableBytes())
@@ -20,20 +22,24 @@ void Buffer::retrieve(size_t len)
         retrieveAll();
     }
 }
+/** @brief 重置全部读指针 */
 void Buffer::retrieveAll()
 {
 	readerIndex_=writerIndex_=kCheapPrePend;
 }
+/** @brief 取出全部未读数据为字符串 */
 std::string Buffer::retrieveAllAsString()
 {
     return retrieveAsString(readableBytes());
 }
+/** @brief 取出 len 字节为字符串 */
 std::string Buffer::retrieveAsString(size_t len)
 {
 	std::string result(peek(),len);
     retrieve(len);
 	return result;
 }
+/** @brief 扩容/整理：保证写区可写空间 >= len */
 void Buffer::makeSpace(size_t len)
 {
     if(writeableBytes()+prePendableBytes()-kCheapPrePend<len)
@@ -47,6 +53,7 @@ void Buffer::makeSpace(size_t len)
         writerIndex_=readerIndex_+readable;
     }
 }
+/** @brief 保证写区可写字节数（不够则扩容） */
 void Buffer::enSurewriteableBytes(size_t len)
 {
 	if(writeableBytes()<len)
@@ -54,12 +61,14 @@ void Buffer::enSurewriteableBytes(size_t len)
         makeSpace(len);
     }
 }
+/** @brief 追加写数据到写区 */
 void Buffer::append(const char* data,size_t len)
 {
 	enSurewriteableBytes(len);
     std::copy(data,data+len,begin()+writerIndex_);
 	writerIndex_+=len;
 }
+/** @brief 从 fd 读入缓冲（一次读满），返回读取字节数 */
 ssize_t Buffer::readFd(int fd,int* saveErrno)
 {
     /*struct iovec
@@ -91,6 +100,7 @@ ssize_t Buffer::readFd(int fd,int* saveErrno)
     }
     return n;
 }
+/** @brief 写出缓冲内容到 fd，返回写出字节数 */
 ssize_t Buffer::writeFd(int fd,int* saveErrno)
 {
     ssize_t n=::send(fd,begin()+readerIndex_,readableBytes(),MSG_NOSIGNAL);

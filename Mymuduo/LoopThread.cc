@@ -2,6 +2,7 @@
 #include"CurrentThread.hpp"
 #include <memory>
 #include<semaphore.h>
+/** @brief 构造线程对象：保存入口函数（实际线程在 start() 创建） */
 Thread::Thread(Func fun):
 tid_(0)
 ,started_(false)
@@ -9,8 +10,10 @@ tid_(0)
 ,thread_(nullptr)
 ,func_(std::move(fun))
 {}
+/** @brief 析构：默认 */
 Thread::~Thread()
 {}
+/** @brief 启动线程（封装 pthread_create + 线程名） */
 void Thread::start()
 {
     started_=true;

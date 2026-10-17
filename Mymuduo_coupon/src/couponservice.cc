@@ -15,12 +15,20 @@ static constexpr int kMaxUseRetry = 3;
 
 // ==================== 单例 ====================
 
+/**
+ * @brief 单例入口：返回全局唯一 CouponService（懒加载，进程内单实例）
+ */
 CouponService* CouponService::init()
 {
     static CouponService svc;
     return &svc;
 }
 
+/**
+ * @brief 构造函数：初始化 MySQL 连接池与 Redis，并注册 msgid -> Handler 映射
+ * @details ready_ 标识服务可用性；MySQL/Redis 任一初始化失败则置为不可用，
+ *          由服务端启动时退出（见 main.cc）。
+ */
 CouponService::CouponService()
     : mysql_("127.0.0.1", 3306, "coupon", "coupon123", "coupon_db", 8)
 {
@@ -430,6 +438,9 @@ void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
 
 // ==================== 工具 ====================
 
+/**
+ * @brief 统一响应回包：封装 msgid/errno/msg/data 并经 conn->send 下发
+ */
 void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
                              const std::string& msg, const json& data)
 {
@@ -444,6 +455,9 @@ void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
     conn->send(out); // send 线程安全：跨线程时自动 queueInLoop 到 IO 线程
 }
 
+/**
+ * @brief 生成全局唯一券码：C{couponId}-{userId}-{16位随机hex}，配合 uk_code 唯一索引
+ */
 std::string CouponService::genCode(int64_t couponId, int64_t userId)
 {
     static thread_local std::mt19937_64 rng(std::random_device{}());
@@ -454,6 +468,9 @@ std::string CouponService::genCode(int64_t couponId, int64_t userId)
     return buf;
 }
 
+/**
+ * @brief 当前时间字符串（YYYY-MM-DD HH:MM:SS）
+ */
 std::string CouponService::nowStr()
 {
     time_t t = time(nullptr);
@@ -464,6 +481,9 @@ std::string CouponService::nowStr()
     return buf;
 }
 
+/**
+ * @brief 未来时间字符串：当前时间 + days 天（券模板有效期计算）
+ */
 std::string CouponService::futureStr(int days)
 {
     time_t t = time(nullptr) + static_cast<time_t>(days) * 86400;

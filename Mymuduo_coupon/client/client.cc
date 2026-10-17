@@ -44,6 +44,7 @@ enum MsgId
 };
 
 // ---- 封包/解包（与服务端协议一致：4字节大端长度头 + JSON）----
+/** @brief 客户端封包：4 字节网络序长度头 + JSON 载荷 */
 static void encodeFrame(std::string& out, const std::string& payload)
 {
     uint32_t len = htonl(static_cast<uint32_t>(payload.size()));
@@ -51,6 +52,7 @@ static void encodeFrame(std::string& out, const std::string& payload)
     out.append(payload);
 }
 
+/** @brief 建立 TCP 连接（纯 POSIX socket） */
 static int connectTcp(const std::string& host, int port)
 {
     int fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -72,6 +74,7 @@ static int connectTcp(const std::string& host, int port)
     return fd;
 }
 
+/** @brief 完整发送（处理 send 部分写入） */
 static void sendAll(int fd, const std::string& data)
 {
     size_t sent = 0;
@@ -87,6 +90,7 @@ static void sendAll(int fd, const std::string& data)
     }
 }
 
+/** @brief 读取并解析一帧响应（4 字节长度头 + JSON） */
 static json readResponse(int fd)
 {
     uint32_t hdr = 0;
@@ -121,6 +125,7 @@ static json readResponse(int fd)
     return json::parse(body);
 }
 
+/** @brief 通用请求：建连→封包→发送→收响应，失败返回 errno=-1 */
 static json request(const std::string& host, int port, const json& req)
 {
     int fd = connectTcp(host, port);
@@ -291,6 +296,7 @@ static void printStat(const StressStat& st, const std::string& tag)
 // =====================================================================
 // main
 // =====================================================================
+/** @brief 打印客户端用法（各命令参数说明） */
 static void usage()
 {
     std::cout
@@ -307,6 +313,7 @@ static void usage()
         << "  [host] [port] optional, default 127.0.0.1 9081\n";
 }
 
+/** @brief 入口：按命令字分发 ping/issue/claim/use/mine/info/stress/dup/stress-mix */
 int main(int argc, char** argv)
 {
     if (argc < 2)

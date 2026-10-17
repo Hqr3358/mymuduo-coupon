@@ -23,11 +23,13 @@ baseloop_(loop)
     accepsock_.BindAddress(port);
     accepchannel_.SetrecvCallback(std::bind(&Acceptor::handleRecv,this,std::placeholders::_1));
 }
+/** @brief 析构：移除监听 Channel */
 Acceptor::~Acceptor()
 {
     accepchannel_.remove();
 }
 
+/** @brief 开始监听并注册可读事件 */
 void Acceptor::listen()
 {
     listening_=true;

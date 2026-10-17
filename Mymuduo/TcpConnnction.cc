@@ -15,6 +15,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+/** @brief 构造连接：封装 fd + Channel，注册读事件回调 */
 TcpConnction::TcpConnction(int fd,EventLoop* loop,std::string name):
 loop_(loop)
 ,name_(name)
@@ -31,15 +32,19 @@ loop_(loop)
     connsock_->SetKeepAlive(true);
     connsock_->SetTcpNoDelay(true);
 }
+/** @brief 析构：移除 Channel 并关闭 fd */
 TcpConnction::~TcpConnction(){}
+/** @brief 返回连接所属事件循环 */
 EventLoop* TcpConnction::getloop()
 {
     return loop_;
 }
+/** @brief 返回连接 socket fd */
 int TcpConnction::fd()
 {
     return connchannel_->fd();
 }
+/** @brief 连接建立：触发连接建立回调（上层可立即回包） */
 void TcpConnction::conntEstablish()
 {
     state_=kConnected;
@@ -52,11 +57,13 @@ void TcpConnction::conntEstablish()
     }
     conntionCallback_(shared_from_this());
 }
+/** @brief 连接销毁：触发关闭回调并清理（弱引用防悬垂） */
 void TcpConnction::conntDestoy()
 {
     state_=kDisconnected;
     connchannel_->remove();
 }
+/** @brief 可读事件处理：读入 Buffer，按读回调分发（业务消息入口） */
 void TcpConnction::handleRead(TimeStamp ti)
 {
 	int savedErrno=0;
@@ -115,6 +122,7 @@ void TcpConnction::handleRead(TimeStamp ti)
         }
     }
 }
+/** @brief 发送数据（线程安全）：跨线程自动转 queueInLoop 到 IO 线程 */
 void TcpConnction::send(const std::string& msg)
 {
 	if(state_==kConnected)
@@ -140,6 +148,7 @@ void TcpConnction::send(const std::string& msg)
         }
     }
 }
+/** @brief IO 线程内发送：优先直写，写不完挂 write 事件 */
 void TcpConnction::sendloop(const char* data,int len)
 {
     ssize_t writen=0,remain=len;
@@ -189,6 +198,7 @@ void TcpConnction::sendloop(const char* data,int len)
     
 }
 
+/** @brief 可写事件处理：继续发送剩余缓冲数据 */
 void TcpConnction::handleWrite()
 {
 	while(connchannel_->isWriting()&&state_==kConnected)
@@ -225,6 +235,7 @@ void TcpConnction::handleWrite()
         }
     }
 }
+/** @brief 对端关闭处理：触发关闭回调并清理连接 */
 void TcpConnction::handleClose()
 {
     state_=kDisConnecting;
@@ -238,6 +249,7 @@ void TcpConnction::handleClose()
     conntionCallback_(shared_from_this());
     closeCallback_(shared_from_this());
 }
+/** @brief 异常处理：打印错误并走关闭流程 */
 void TcpConnction::handleErr()
 {
 	int optval,err;

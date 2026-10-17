@@ -26,6 +26,10 @@ const char* CouponRedis::kClaimLua =
 // thread_local：每个业务线程一条 Redis 连接
 static thread_local redisContext* t_ctx = nullptr;
 
+/**
+ * @brief 初始化 Redis 连接：预连 + 加载 Lua 脚本 + 释放主句柄
+ * @details 业务访问统一走 thread_local 懒连接（ctx()），避免主线程长期持有连接。
+ */
 bool CouponRedis::init(const std::string& host, int port)
 {
     host_ = host;
@@ -56,6 +60,9 @@ bool CouponRedis::init(const std::string& host, int port)
     return true;
 }
 
+/**
+ * @brief 获取当前业务线程的 Redis 连接（thread_local 懒加载，未连接则建立并加载脚本）
+ */
 redisContext* CouponRedis::ctx()
 {
     if (t_ctx) return t_ctx;
@@ -74,6 +81,9 @@ redisContext* CouponRedis::ctx()
     return t_ctx;
 }
 
+/**
+ * @brief 加载领券原子 Lua 脚本到 Redis（SCRIPT LOAD，保存 sha 供 EVALSHA 调用）
+ */
 bool CouponRedis::loadScript(redisContext* c)
 {
     redisReply* r = (redisReply*)redisCommand(c, "SCRIPT LOAD %s", kClaimLua);
@@ -155,6 +165,11 @@ int CouponRedis::claimTry(int64_t couponId, int64_t userId, long* remain)
     return ERR_NOT_EXIST;
 }
 
+/**
+ * @brief 【功能】领券落库失败补偿：回补库存 + 移除领取标记（SREM）
+ * @details 对应功能测试第 2 项防超发：Redis 预扣成功后 MySQL 落库失败时调用，
+ *          保证 Redis/DB 最终一致。
+ */
 void CouponRedis::claimRollback(int64_t couponId, int64_t userId)
 {
     redisContext* c = ctx();
@@ -170,6 +185,11 @@ void CouponRedis::claimRollback(int64_t couponId, int64_t userId)
     if (r2) freeReplyObject(r2);
 }
 
+/**
+ * @brief 【功能】1062 唯一索引幂等补偿：仅回补库存，保留领取标记
+ * @details 对应功能测试第 12 项：并发领取触发 DB 唯一索引冲突（uk_user_coupon）
+ *          时调用，用户已领过该券，库存应归还但领取标记保留（去重语义不变）。
+ */
 void CouponRedis::claimRollbackStock(int64_t couponId)
 {
     // 优化：只回补库存，保留 claimed 集合（见头文件说明）
@@ -181,6 +201,10 @@ void CouponRedis::claimRollbackStock(int64_t couponId)
     if (r) freeReplyObject(r);
 }
 
+/**
+ * @brief 【功能】发券时初始化 Redis 库存（SET stock + DEL claimed 集合）
+ * @details 对应功能测试第 2 项防超发前置：券模板入库后写入库存，清理历史领取标记。
+ */
 bool CouponRedis::initStock(int64_t couponId, int total)
 {
     redisContext* c = ctx();
@@ -196,6 +220,9 @@ bool CouponRedis::initStock(int64_t couponId, int total)
     return true;
 }
 
+/**
+ * @brief 【功能】查询券实时库存（对应功能测试第 9 项 Redis/DB 一致性）
+ */
 long CouponRedis::getStock(int64_t couponId)
 {
     redisContext* c = ctx();
@@ -213,6 +240,10 @@ long CouponRedis::getStock(int64_t couponId)
     return v;
 }
 
+/**
+ * @brief 【功能】核销成功后写已核销缓存（SET EX 7 天 TTL）
+ * @details 对应功能测试第 13 项：缓存 TTL 604800，与 DB 核销记录互为幂等双保险。
+ */
 bool CouponRedis::markUsed(const std::string& couponCode)
 {
     redisContext* c = ctx();
@@ -228,6 +259,9 @@ bool CouponRedis::markUsed(const std::string& couponCode)
     return false;
 }
 
+/**
+ * @brief 【功能】核销幂等前置检查：Redis 缓存是否已核销（对应功能测试第 5 项）
+ */
 bool CouponRedis::isUsed(const std::string& couponCode)
 {
     redisContext* c = ctx();
@@ -239,6 +273,9 @@ bool CouponRedis::isUsed(const std::string& couponCode)
     return used;
 }
 
+/**
+ * @brief 【功能】定时清理：删除券的库存/领取集合缓存（对应功能测试第 14 项）
+ */
 void CouponRedis::clearCouponCache(int64_t couponId)
 {
     // 优化：删除券的库存/领取集合缓存（定时清理器下架过期券时调用）
