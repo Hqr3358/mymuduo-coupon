@@ -45,6 +45,8 @@ private:
     void onQueryMine(const TcpConnctionptr& conn, const json& js);
     // 功能：查询券模板详情
     void onQuery(const TcpConnctionptr& conn, const json& js);
+    // 功能：返回服务端运行计数（QPS/各 msgid 成功数），压测时用
+    void onMetrics(const TcpConnctionptr& conn, const json& js);
 
     // 功能：单轮清理（过期券下架 + Redis 清缓存）
     void cleanExpired();
@@ -70,4 +72,13 @@ void sendResp(const TcpConnctionptr& conn, int msgid, int err,
     std::thread cleaner_;
     std::atomic<bool> cleanerRunning_{false};
     static constexpr int kCleanIntervalSec = 60;
+
+    // 压测计数：按 msgid 原子累计（成功 + 按 errno 分类）
+    std::atomic<long> statTotal_{0};
+    std::atomic<long> statOk_{0};
+    std::atomic<long> statNoStock_{0};
+    std::atomic<long> statDup_{0};
+    std::atomic<long> statDbErr_{0};
+    std::atomic<long> statRedisErr_{0};
+    std::atomic<long> statOtherErr_{0};
 };

@@ -12,6 +12,7 @@ enum MsgId
     MSG_USE        = 3, // 核销：{msgid, user_id, coupon_code}
     MSG_QUERY_MINE = 4, // 查询我的券：{msgid, user_id}
     MSG_QUERY      = 5, // 查询券模板（含实时库存）：{msgid, coupon_id}
+    MSG_METRICS    = 6, // 服务端运行计数（压测用）：{msgid}
     MSG_ERROR      = 99
 };
 

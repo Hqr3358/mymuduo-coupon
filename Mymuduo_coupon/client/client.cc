@@ -27,6 +27,7 @@
 #include <cstdio>
 #include <cstring>
 #include <iostream>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -41,6 +42,7 @@ enum MsgId
     MSG_USE = 3,
     MSG_QUERY_MINE = 4,
     MSG_QUERY = 5,
+    MSG_METRICS = 6,
 };
 
 // ---- 封包/解包（与服务端协议一致：4字节大端长度头 + JSON）----
@@ -161,6 +163,14 @@ struct StressStat
     std::atomic<long> dup{0};
     std::atomic<long> other{0};
     std::atomic<long> connFail{0};
+    // 延迟样本：每个 worker 线程 thread_local 收集，join 后合并
+    std::mutex latMtx;
+    std::vector<double> latMs;
+    void addLatency(double ms)
+    {
+        std::lock_guard<std::mutex> lk(latMtx);
+        latMs.push_back(ms);
+    }
 };
 
 /**
@@ -179,10 +189,14 @@ static void claimOnce(const std::string& host, int port, int64_t couponId,
     json req = {{"msgid", MSG_CLAIM}, {"coupon_id", couponId}, {"user_id", userId}};
     std::string out;
     encodeFrame(out, req.dump());
+    auto t0 = std::chrono::steady_clock::now();
     try
     {
         sendAll(fd, out);
         json resp = readResponse(fd);
+        auto t1 = std::chrono::steady_clock::now();
+        double ms = std::chrono::duration<double, std::milli>(t1 - t0).count();
+        st->addLatency(ms);
         int err = resp.value("errno", -1);
         if (err == 0) st->ok++;
         else if (err == 2) st->noStock++;
@@ -281,7 +295,7 @@ static void mixWorker(const std::string& host, int port, int64_t couponId,
     }
 }
 
-static void printStat(const StressStat& st, const std::string& tag)
+static void printStat(const StressStat& st, const std::string& tag, long elapsedMs)
 {
     long total = st.ok + st.noStock + st.dup + st.other + st.connFail;
     printf("\n===== %s =====\n", tag.c_str());
@@ -291,6 +305,25 @@ static void printStat(const StressStat& st, const std::string& tag)
     printf("duplicate      : %ld\n", st.dup.load());
     printf("other error    : %ld\n", st.other.load());
     printf("conn fail      : %ld\n", st.connFail.load());
+    if (elapsedMs > 0)
+    {
+        double qps = total * 1000.0 / elapsedMs;
+        printf("elapsed        : %ld ms\n", elapsedMs);
+        printf("throughput     : %.1f req/s\n", qps);
+    }
+    if (!st.latMs.empty())
+    {
+        std::vector<double> lat = st.latMs;
+        std::sort(lat.begin(), lat.end());
+        auto at = [&](double p) -> double {
+            size_t idx = static_cast<size_t>(p * lat.size());
+            if (idx >= lat.size()) idx = lat.size() - 1;
+            return lat[idx];
+        };
+        printf("latency P50    : %.2f ms\n", at(0.50));
+        printf("latency P95    : %.2f ms\n", at(0.95));
+        printf("latency P99    : %.2f ms\n", at(0.99));
+    }
 }
 
 // =====================================================================
@@ -305,8 +338,9 @@ static void usage()
         << "  couponclient issue <title> <total>\n"
         << "  couponclient claim <coupon_id> <user_id>\n"
         << "  couponclient use <user_id> <coupon_code>\n"
-        << "  couponclient mine <user_id>\n"
+        << "  couponclient mine <user_id> [max_id]\n"
         << "  couponclient info <coupon_id>\n"
+        << "  couponclient metrics\n"
         << "  couponclient stress <coupon_id> <users> <threads>\n"
         << "  couponclient dup <coupon_id> <user_id> <times>\n"
         << "  couponclient stress-mix <coupon_id> <users> <threads>\n"
@@ -361,8 +395,16 @@ int main(int argc, char** argv)
         }
         else if (cmd == "mine" && argc >= 3)
         {
-            json resp = request(host, port, {{"msgid", MSG_QUERY_MINE},
-                                             {"user_id", atoll(argv[2])}});
+            // 用法: mine <user_id> [max_id]
+            int64_t userId = atoll(argv[2]);
+            json req = {{"msgid", MSG_QUERY_MINE}, {"user_id", userId}};
+            if (argc >= 4) req["max_id"] = atoll(argv[3]);
+            json resp = request(host, port, req);
+            std::cout << resp.dump(2) << std::endl;
+        }
+        else if (cmd == "metrics")
+        {
+            json resp = request(host, port, {{"msgid", MSG_METRICS}});
             std::cout << resp.dump(2) << std::endl;
         }
         else if (cmd == "info" && argc >= 3)
@@ -394,8 +436,7 @@ int main(int argc, char** argv)
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now() - t0).count();
 
-            printStat(st, "stress claim (stock=" + std::to_string(users) + " users)");
-            printf("elapsed        : %ld ms\n", ms);
+            printStat(st, "stress claim (stock=" + std::to_string(users) + " users)", ms);
             // 防超发断言：成功数 == min(库存, 用户数)；由于每用户只领一次，成功数应等于
             // 收到的"库存不足"前的成功数。这里给出期望：success + noStock == users 且
             // success <= users。若成功数 == users，说明库存 >= 用户数，未超发。
@@ -418,8 +459,7 @@ int main(int argc, char** argv)
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now() - t0).count();
 
-            printStat(st, "dup claim (same user x" + std::to_string(times) + ")");
-            printf("elapsed        : %ld ms\n", ms);
+            printStat(st, "dup claim (same user x" + std::to_string(times) + ")", ms);
             printf("expect: success == 1, duplicate == %d\n", times - 1);
         }
         else if (cmd == "stress-mix" && argc >= 5)
@@ -445,8 +485,7 @@ int main(int argc, char** argv)
             auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
                           std::chrono::steady_clock::now() - t0).count();
 
-            printStat(st, "stress-mix (claim + double-use)");
-            printf("elapsed        : %ld ms\n", ms);
+            printStat(st, "stress-mix (claim + double-use)", ms);
             printf("expect: success == issued stock, and no 'other error' means use idempotent\n");
         }
         else

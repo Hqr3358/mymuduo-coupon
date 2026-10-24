@@ -44,6 +44,7 @@ CouponService::CouponService()
     services_.insert({MSG_USE, std::bind(&CouponService::onUse, this, std::placeholders::_1, std::placeholders::_2)});
     services_.insert({MSG_QUERY_MINE, std::bind(&CouponService::onQueryMine, this, std::placeholders::_1, std::placeholders::_2)});
     services_.insert({MSG_QUERY, std::bind(&CouponService::onQuery, this, std::placeholders::_1, std::placeholders::_2)});
+    services_.insert({MSG_METRICS, std::bind(&CouponService::onMetrics, this, std::placeholders::_1, std::placeholders::_2)});
 
     if (ready_)
     {
@@ -109,7 +110,20 @@ void CouponService::onIssue(const TcpConnctionptr& conn, const json& js)
     }
 
     int64_t couponId = static_cast<int64_t>(rs.lastInsertId());
-    redis_.initStock(couponId, total);
+
+    // 计算券有效期（秒），给 Redis key 设 TTL
+    std::string sqlTime = "SELECT TIMESTAMPDIFF(SECOND, NOW(), '" + end + "') AS ttl";
+    ResultSet ttlRs;
+    {
+        MysqlConn mc(&mysql_);
+        mc.query(sqlTime, &ttlRs);
+    }
+    long ttlSec = 86400 * 30; // 默认 30 天
+    if (!ttlRs.empty()) ttlSec = std::atol(ttlRs.get(0, "ttl").c_str());
+    if (ttlSec < 60) ttlSec = 60;
+
+    redis_.initStock(couponId, total, ttlSec);
+    redis_.cacheCouponInfo(couponId, title, 1, end, total, ttlSec);
 
     sendResp(conn, MSG_ISSUE, ERR_OK, "issue ok",
              {{"coupon_id", couponId}, {"total", total}});
@@ -126,45 +140,76 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
 
     int64_t couponId = js["coupon_id"].get<int64_t>();
     int64_t userId = js["user_id"].get<int64_t>();
+    statTotal_++;
 
-    // 1) 校验券存在且未过期（读 MySQL）
-    std::string checkSql = "SELECT id, title, status, end_time FROM coupon WHERE id = " + std::to_string(couponId);
-    ResultSet check;
+    // 1) 先读 Redis 券元数据（Cache-Aside），miss 才回查 MySQL
+    std::string title;
+    int status = -1;
+    std::string endTime;
+    int total = 0;
+    bool infoHit = redis_.getCouponInfo(couponId, title, status, endTime, total);
+
+    if (!infoHit)
     {
-        MysqlConn mc(&mysql_);
-        if (!mc.query(checkSql, &check))
+        // 被标记为"不存在"直接返回，不打 DB（防穿透）
+        if (redis_.isCouponMissing(couponId))
         {
-            sendResp(conn, MSG_CLAIM, ERR_DB, "query coupon failed");
+            sendResp(conn, MSG_CLAIM, ERR_NOT_EXIST, "coupon not exist");
             return;
         }
+        // 回查 DB
+        std::string checkSql = "SELECT id, title, status, end_time FROM coupon WHERE id = "
+                               + std::to_string(couponId);
+        ResultSet check;
+        {
+            MysqlConn mc(&mysql_);
+            if (!mc.query(checkSql, &check))
+            {
+                statDbErr_++;
+                sendResp(conn, MSG_CLAIM, ERR_DB, "query coupon failed");
+                return;
+            }
+        }
+        if (check.empty())
+        {
+            // 缓存空值，短 TTL
+            redis_.markCouponMissing(couponId);
+            sendResp(conn, MSG_CLAIM, ERR_NOT_EXIST, "coupon not exist");
+            return;
+        }
+        title = check.get(0, "title");
+        status = std::atoi(check.get(0, "status").c_str());
+        endTime = check.get(0, "end_time");
+        total = std::atoi(check.get(0, "total").c_str());
+        // 回填 Redis（不阻塞主流程）
+        // TTL：用 end_time 算，兜底 30 天
+        long ttlSec = 86400 * 30;
+        redis_.cacheCouponInfo(couponId, title, status, endTime, total, ttlSec);
     }
-    if (check.empty())
-    {
-        sendResp(conn, MSG_CLAIM, ERR_NOT_EXIST, "coupon not exist");
-        return;
-    }
-    if (check.get(0, "status") != "1")
+
+    if (status != 1)
     {
         sendResp(conn, MSG_CLAIM, ERR_NOT_EXIST, "coupon offline");
         return;
     }
-    if (check.get(0, "end_time") < nowStr())
+    if (endTime < nowStr())
     {
         sendResp(conn, MSG_CLAIM, ERR_NOT_EXIST, "coupon expired");
         return;
     }
-    std::string title = check.get(0, "title");
 
     // 2) Redis Lua 原子扣库存 + 去重
     long remain = 0;
     int ret = redis_.claimTry(couponId, userId, &remain);
     if (ret == ERR_NO_STOCK)
     {
+        statNoStock_++;
         sendResp(conn, MSG_CLAIM, ERR_NO_STOCK, "no stock");
         return;
     }
     if (ret == ERR_DUP_CLAIM)
     {
+        statDup_++;
         sendResp(conn, MSG_CLAIM, ERR_DUP_CLAIM, "already claimed");
         return;
     }
@@ -175,6 +220,7 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
     }
     if (ret != ERR_OK)
     {
+        statRedisErr_++;
         sendResp(conn, MSG_CLAIM, ERR_SYSTEM, "redis unavailable, retry later");
         return;
     }
@@ -200,15 +246,18 @@ void CouponService::onClaim(const TcpConnctionptr& conn, const json& js)
         if (mc.lastErrno() == 1062)
         {
             redis_.claimRollbackStock(couponId);
+            statDup_++;
             sendResp(conn, MSG_CLAIM, ERR_DUP_CLAIM, "already claimed (db unique index)");
             return;
         }
         // 唯一索引冲突（用户已领过）或其他 DB 错误：回滚 Redis 预扣
         redis_.claimRollback(couponId, userId);
+        statDbErr_++;
         sendResp(conn, MSG_CLAIM, ERR_DB, "insert user_coupon failed, rolled back");
         return;
     }
 
+    statOk_++;
     sendResp(conn, MSG_CLAIM, ERR_OK, "claim ok",
              {{"coupon_id", couponId}, {"user_id", userId},
               {"coupon_code", code}, {"remain", remain}, {"title", title}});
@@ -300,13 +349,23 @@ void CouponService::onQueryMine(const TcpConnctionptr& conn, const json& js)
     }
 
     int64_t userId = js["user_id"].get<int64_t>();
+    int64_t maxId = 0;
+    if (js.contains("max_id") && js["max_id"].is_number_integer())
+    {
+        maxId = js["max_id"].get<int64_t>();
+    }
+    int pageSize = 20;
+
     std::string shard = userCouponTable(userId);
 
-    std::string sql = "SELECT uc.coupon_code, uc.status, uc.claimed_at, uc.used_at, uc.order_id, "
+    // 联合游标分页：WHERE user_id=? AND id < max_id ORDER BY id DESC LIMIT 20
+    // 个人项目 id 自增，与 claimed_at 单调一致，单字段 id 即可
+    std::string sql = "SELECT uc.id, uc.coupon_code, uc.status, uc.claimed_at, uc.used_at, uc.order_id, "
                       "c.title, c.id AS coupon_id "
                       "FROM " + shard + " uc JOIN coupon c ON uc.coupon_id = c.id "
-                      "WHERE uc.user_id = " + std::to_string(userId) +
-                      " ORDER BY uc.id DESC LIMIT 100";
+                      "WHERE uc.user_id = " + std::to_string(userId);
+    if (maxId > 0) sql += " AND uc.id < " + std::to_string(maxId);
+    sql += " ORDER BY uc.id DESC LIMIT " + std::to_string(pageSize);
 
     MysqlConn mc(&mysql_);
     ResultSet rs;
@@ -317,19 +376,29 @@ void CouponService::onQueryMine(const TcpConnctionptr& conn, const json& js)
     }
 
     json list = json::array();
+    int64_t nextMaxId = 0;
     for (size_t i = 0; i < rs.rows(); ++i)
     {
+        int64_t rowId = std::atoll(rs.get(i, "id").c_str());
+        if (i == rs.rows() - 1) nextMaxId = rowId;
         list.push_back({
+            {"id", rowId},
             {"coupon_id", rs.get(i, "coupon_id")},
             {"title", rs.get(i, "title")},
             {"coupon_code", rs.get(i, "coupon_code")},
-            {"status", rs.get(i, "status")},           // 0 未用 1 已核销
+            {"status", rs.get(i, "status")},
             {"claimed_at", rs.get(i, "claimed_at")},
             {"used_at", rs.get(i, "used_at")},
             {"order_id", rs.get(i, "order_id")},
         });
     }
-    sendResp(conn, MSG_QUERY_MINE, ERR_OK, "ok", {{"count", list.size()}, {"coupons", list}});
+    // 不足一页说明没有下一页
+    bool hasMore = (rs.rows() >= static_cast<size_t>(pageSize));
+    sendResp(conn, MSG_QUERY_MINE, ERR_OK, "ok",
+             {{"count", list.size()},
+              {"next_max_id", hasMore ? nextMaxId : 0},
+              {"has_more", hasMore},
+              {"coupons", list}});
 }
 
 void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
@@ -370,6 +439,19 @@ void CouponService::onQuery(const TcpConnctionptr& conn, const json& js)
 }
 
 // ==================== 工具 ====================
+
+void CouponService::onMetrics(const TcpConnctionptr& conn, const json& /*js*/)
+{
+    sendResp(conn, MSG_METRICS, ERR_OK, "ok", {
+        {"total", statTotal_.load()},
+        {"ok", statOk_.load()},
+        {"no_stock", statNoStock_.load()},
+        {"dup", statDup_.load()},
+        {"db_err", statDbErr_.load()},
+        {"redis_err", statRedisErr_.load()},
+        {"other_err", statOtherErr_.load()},
+    });
+}
 
 void CouponService::sendResp(const TcpConnctionptr& conn, int msgid, int err,
                              const std::string& msg, const json& data)

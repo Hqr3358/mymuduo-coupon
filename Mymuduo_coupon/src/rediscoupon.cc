@@ -170,7 +170,7 @@ void CouponRedis::claimRollbackStock(int64_t couponId)
     if (r) freeReplyObject(r);
 }
 
-bool CouponRedis::initStock(int64_t couponId, int total)
+bool CouponRedis::initStock(int64_t couponId, int total, long ttlSec)
 {
     redisContext* c = ctx();
     if (!c) return false;
@@ -178,11 +178,83 @@ bool CouponRedis::initStock(int64_t couponId, int total)
     std::string stockKey = "coupon:stock:" + std::to_string(couponId);
     std::string claimedKey = "coupon:claimed:" + std::to_string(couponId);
 
-    redisReply* r = (redisReply*)redisCommand(c, "SET %s %d", stockKey.c_str(), total);
+    // TTL 加随机偏移，避免一批券同时过期导致 DEL/重建雪崩
+    long ttl = ttlSec + (std::rand() % 300);
+    redisReply* r = (redisReply*)redisCommand(c, "SET %s %d EX %ld", stockKey.c_str(), total, ttl);
     if (r) freeReplyObject(r);
     redisReply* r2 = (redisReply*)redisCommand(c, "DEL %s", claimedKey.c_str());
     if (r2) freeReplyObject(r2);
     return true;
+}
+
+// ---- 券元数据缓存 ----
+void CouponRedis::cacheCouponInfo(int64_t couponId, const std::string& title,
+                                  int status, const std::string& endTime, int total, long ttlSec)
+{
+    redisContext* c = ctx();
+    if (!c) return;
+    std::string key = "coupon:info:" + std::to_string(couponId);
+    redisCommand(c, "HSET %s title %s status %d end_time %s total %d",
+                 key.c_str(), title.c_str(), status, endTime.c_str(), total);
+    redisCommand(c, "EXPIRE %s %ld", key.c_str(), ttlSec + (std::rand() % 300));
+    // 清除"不存在"标记
+    redisCommand(c, "DEL coupon:missing:%s", std::to_string(couponId).c_str());
+}
+
+bool CouponRedis::getCouponInfo(int64_t couponId, std::string& title, int& status,
+                                std::string& endTime, int& total)
+{
+    redisContext* c = ctx();
+    if (!c) return false;
+    std::string key = "coupon:info:" + std::to_string(couponId);
+    redisReply* r = (redisReply*)redisCommand(c, "HGETALL %s", key.c_str());
+    if (!r || r->type != REDIS_REPLY_ARRAY || r->elements == 0)
+    {
+        if (r) freeReplyObject(r);
+        return false;
+    }
+    for (size_t i = 0; i + 1 < r->elements; i += 2)
+    {
+        std::string field = r->element[i]->str;
+        std::string val = r->element[i + 1]->str;
+        if (field == "title") title = val;
+        else if (field == "status") status = atoi(val.c_str());
+        else if (field == "end_time") endTime = val;
+        else if (field == "total") total = atoi(val.c_str());
+    }
+    freeReplyObject(r);
+    return true;
+}
+
+void CouponRedis::invalidateCouponInfo(int64_t couponId)
+{
+    redisContext* c = ctx();
+    if (!c) return;
+    std::string key = "coupon:info:" + std::to_string(couponId);
+    // 用 UNLINK 异步删，避免券元数据大时阻塞 Redis 单线程
+    redisReply* r = (redisReply*)redisCommand(c, "UNLINK %s", key.c_str());
+    if (r) freeReplyObject(r);
+}
+
+void CouponRedis::markCouponMissing(int64_t couponId)
+{
+    redisContext* c = ctx();
+    if (!c) return;
+    std::string key = "coupon:missing:" + std::to_string(couponId);
+    redisReply* r = (redisReply*)redisCommand(c, "SET %s 1 EX 60", key.c_str());
+    if (r) freeReplyObject(r);
+}
+
+bool CouponRedis::isCouponMissing(int64_t couponId)
+{
+    redisContext* c = ctx();
+    if (!c) return false;
+    std::string key = "coupon:missing:" + std::to_string(couponId);
+    redisReply* r = (redisReply*)redisCommand(c, "EXISTS %s", key.c_str());
+    if (!r) return false;
+    bool miss = (r->type == REDIS_REPLY_INTEGER && r->integer == 1);
+    freeReplyObject(r);
+    return miss;
 }
 
 long CouponRedis::getStock(int64_t couponId)
@@ -231,11 +303,14 @@ bool CouponRedis::isUsed(const std::string& couponCode)
 void CouponRedis::clearCouponCache(int64_t couponId)
 {
     // 优化：删除券的库存/领取集合缓存（定时清理器下架过期券时调用）
+    // 用 UNLINK 异步删，避免大 Set（claimed 可能几十万元素）DEL 阻塞 Redis 单线程
     redisContext* c = ctx();
     if (!c) return;
 
     std::string stockKey = "coupon:stock:" + std::to_string(couponId);
     std::string claimedKey = "coupon:claimed:" + std::to_string(couponId);
-    redisReply* r = (redisReply*)redisCommand(c, "DEL %s %s", stockKey.c_str(), claimedKey.c_str());
+    std::string infoKey = "coupon:info:" + std::to_string(couponId);
+    redisReply* r = (redisReply*)redisCommand(c, "UNLINK %s %s %s",
+                                              stockKey.c_str(), claimedKey.c_str(), infoKey.c_str());
     if (r) freeReplyObject(r);
 }

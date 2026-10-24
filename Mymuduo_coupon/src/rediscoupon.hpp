@@ -25,11 +25,25 @@ public:
     // 功能：1062 冲突时仅回补库存
     void claimRollbackStock(int64_t couponId);
 
-    // 功能：发券初始化 Redis 库存
-    bool initStock(int64_t couponId, int total);
+    // 功能：发券初始化 Redis 库存（带 TTL，基于券有效期 + 随机偏移防雪崩）
+    bool initStock(int64_t couponId, int total, long ttlSec);
 
     // 功能：查询实时库存
     long getStock(int64_t couponId);
+
+    // ---- 券元数据缓存（Cache-Aside：发券时写入，领券时先读 Redis，miss 回查 DB 回填）----
+    // 写券元数据到 Redis（HSET coupon:info:{id}），并设置 TTL
+    void cacheCouponInfo(int64_t couponId, const std::string& title,
+                         int status, const std::string& endTime, int total, long ttlSec);
+    // 读券元数据；命中返回 true 并填充 out；未命中返回 false
+    bool getCouponInfo(int64_t couponId, std::string& title, int& status,
+                       std::string& endTime, int& total);
+    // 券下架/过期时删元数据缓存
+    void invalidateCouponInfo(int64_t couponId);
+    // 券不存在时缓存空值（短 TTL 防穿透）
+    void markCouponMissing(int64_t couponId);
+    // 判断是否被标记为不存在
+    bool isCouponMissing(int64_t couponId);
 
     // 功能：核销成功写已核销缓存（7天TTL）
     bool markUsed(const std::string& couponCode);
