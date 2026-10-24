@@ -170,6 +170,7 @@ void CouponRedis::claimRollbackStock(int64_t couponId)
     if (r) freeReplyObject(r);
 }
 
+// 优化：TTL 加随机偏移，避免一批券同时过期导致 DEL/重建雪崩
 bool CouponRedis::initStock(int64_t couponId, int total, long ttlSec)
 {
     redisContext* c = ctx();
@@ -178,7 +179,6 @@ bool CouponRedis::initStock(int64_t couponId, int total, long ttlSec)
     std::string stockKey = "coupon:stock:" + std::to_string(couponId);
     std::string claimedKey = "coupon:claimed:" + std::to_string(couponId);
 
-    // TTL 加随机偏移，避免一批券同时过期导致 DEL/重建雪崩
     long ttl = ttlSec + (std::rand() % 300);
     redisReply* r = (redisReply*)redisCommand(c, "SET %s %d EX %ld", stockKey.c_str(), total, ttl);
     if (r) freeReplyObject(r);
@@ -187,7 +187,7 @@ bool CouponRedis::initStock(int64_t couponId, int total, long ttlSec)
     return true;
 }
 
-// ---- 券元数据缓存 ----
+// 功能：写券元数据缓存
 void CouponRedis::cacheCouponInfo(int64_t couponId, const std::string& title,
                                   int status, const std::string& endTime, int total, long ttlSec)
 {
@@ -197,10 +197,11 @@ void CouponRedis::cacheCouponInfo(int64_t couponId, const std::string& title,
     redisCommand(c, "HSET %s title %s status %d end_time %s total %d",
                  key.c_str(), title.c_str(), status, endTime.c_str(), total);
     redisCommand(c, "EXPIRE %s %ld", key.c_str(), ttlSec + (std::rand() % 300));
-    // 清除"不存在"标记
+    // 优化：写元数据时清掉"不存在"标记
     redisCommand(c, "DEL coupon:missing:%s", std::to_string(couponId).c_str());
 }
 
+// 功能：读券元数据
 bool CouponRedis::getCouponInfo(int64_t couponId, std::string& title, int& status,
                                 std::string& endTime, int& total)
 {
@@ -226,16 +227,17 @@ bool CouponRedis::getCouponInfo(int64_t couponId, std::string& title, int& statu
     return true;
 }
 
+// 优化：用 UNLINK 异步删，避免券元数据大时阻塞 Redis 单线程
 void CouponRedis::invalidateCouponInfo(int64_t couponId)
 {
     redisContext* c = ctx();
     if (!c) return;
     std::string key = "coupon:info:" + std::to_string(couponId);
-    // 用 UNLINK 异步删，避免券元数据大时阻塞 Redis 单线程
     redisReply* r = (redisReply*)redisCommand(c, "UNLINK %s", key.c_str());
     if (r) freeReplyObject(r);
 }
 
+// 功能：券不存在时写空值标记（短 TTL 防穿透）
 void CouponRedis::markCouponMissing(int64_t couponId)
 {
     redisContext* c = ctx();
@@ -245,6 +247,7 @@ void CouponRedis::markCouponMissing(int64_t couponId)
     if (r) freeReplyObject(r);
 }
 
+// 功能：判断券是否被标记为不存在
 bool CouponRedis::isCouponMissing(int64_t couponId)
 {
     redisContext* c = ctx();
